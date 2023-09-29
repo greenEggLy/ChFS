@@ -3,7 +3,6 @@
 #include "common/bitmap.h"
 #include "metadata/inode.h"
 #include "metadata/manager.h"
-#include "common/logger.h"
 
 namespace chfs {
 
@@ -139,6 +138,7 @@ namespace chfs {
 
         auto len = sizeof(block_id_t);
         inode_id_t idx = LOGIC_2_RAW(id);
+        // search in inode entry
         block_id_t block_id = 1 + idx * len / bm->block_size();
         auto offset = idx * len % bm->block_size();
 
@@ -253,17 +253,16 @@ namespace chfs {
         bm->read_block(block_id, buffer.data());
 
         memset(buffer.data() + offset, 0, len);
+        bm->write_block(block_id, buffer.data());
 
         // clear the bitmap
-        auto nodes_per_map = bm->block_size() * KBitsPerByte;
-        auto bitmap_idx = 1 + n_table_blocks + idx / nodes_per_map;
-        auto offset_bitmap = idx % nodes_per_map;
-        if (offset_bitmap) {
-            bitmap_idx += 1;
-        }
-        bm->read_block(bitmap_idx, buffer.data());
+        auto payload = bm->block_size() * KBitsPerByte;
+        auto bitmap_block_id = 1 + n_bitmap_blocks + block_id / payload;
+        auto bitmap_offset = block_id % payload;
+        bm->read_block(bitmap_block_id, buffer.data());
         auto bitmap = Bitmap(buffer.data(), bm->block_size());
-        bitmap.clear(offset_bitmap);
+        bitmap.clear(bitmap_offset);
+        bm->write_block(bitmap_block_id, buffer.data());
 
         return KNullOk;
     }

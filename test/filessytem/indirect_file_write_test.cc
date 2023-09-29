@@ -3,7 +3,6 @@
 #include "./common.h"
 #include "filesystem/operations.h"
 #include "gtest/gtest.h"
-#include "common/logger.h"
 
 namespace chfs {
 
@@ -23,7 +22,6 @@ namespace chfs {
 
     auto vec_equal(std::vector<u8> &a, std::vector<u8> &b) -> bool {
         if (a.size() != b.size()) {
-            LOG_FORMAT_ERROR("size not equal: {} vs {}", a.size(), b.size());
             return false;
         }
 
@@ -56,27 +54,17 @@ namespace chfs {
 
         // std::vector<u8> test_file_content(KLargeFileMax);
         for (uint i = 0; i < 10; ++i) {
-            LOG_FORMAT_DEBUG("test round: {}", i);
             // TODO: initialize the test_file_content
             for (auto id: id_list) {
                 contents[id] = generate_random_string(rng);
+//                if (id != 38 || i != 8) continue;
 
-//                if (i == 8 && id == 38) {
-//                    // print contents[id]
-//                    for (auto c: contents[id]) {
-//                        std::cout << c;
-//                    }
-//                    std::cout << std::endl;
-//                }
                 auto res = fs.write_file(id, contents[id]);
                 ASSERT_TRUE(res.is_ok());
                 auto res_ = fs.read_file(id);
                 ASSERT_TRUE(res_.is_ok());
                 auto res_data = res_.unwrap();
                 auto check = vec_equal(res_data, contents[id]);
-                if (!check) {
-                    LOG_FORMAT_INFO("id: {}", id);
-                }
                 ASSERT_TRUE(check);
 
             }

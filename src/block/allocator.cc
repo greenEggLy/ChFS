@@ -1,7 +1,6 @@
 #include "block/allocator.h"
 
 #include "common/bitmap.h"
-#include "common/logger.h"
 
 namespace chfs {
 
@@ -127,7 +126,6 @@ namespace chfs {
 // Your implementation
     auto BlockAllocator::deallocate(block_id_t block_id) -> ChfsNullResult {
         if (block_id >= this->bm->total_blocks()) {
-            LOG_FORMAT_ERROR("invalid args: {}", block_id);
             return ChfsNullResult(ErrorType::INVALID_ARG);
         }
 

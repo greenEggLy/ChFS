@@ -1,7 +1,6 @@
 #include <ctime>
 
 #include "filesystem/operations.h"
-#include "common/logger.h"
 
 namespace chfs {
 
@@ -111,7 +110,6 @@ namespace chfs {
                     // direct block
                     auto block_id_res = this->block_allocator_->allocate();
                     if (block_id_res.is_err()) {
-                        std::cout << "allocate direct block error" << std::endl;
                         error_code = block_id_res.unwrap_error();
                         goto err_ret;
                     }
@@ -122,7 +120,6 @@ namespace chfs {
                     // get the indirect block id
                     auto block_id_res = inode_p->get_or_insert_indirect_block(this->block_allocator_);
                     if (block_id_res.is_err()) {
-                        LOG_FORMAT_ERROR("allocate indirect inode error");
                         error_code = block_id_res.unwrap_error();
                         goto err_ret;
                     }
@@ -136,7 +133,6 @@ namespace chfs {
                     // allocate a new block for storing info
                     auto indirect_block_id_res = this->block_allocator_->allocate();
                     if (indirect_block_id_res.is_err()) {
-                        LOG_FORMAT_ERROR("allocate indirect block error");
                         error_code = indirect_block_id_res.unwrap_error();
                         goto err_ret;
                     }
@@ -152,7 +148,6 @@ namespace chfs {
                 if (inode_p->is_direct_block(idx)) {
                     auto res = this->block_allocator_->deallocate(inode_p->blocks[idx]);
                     if (res.is_err()) {
-                        LOG_FORMAT_ERROR("direct deallocate error");
                         error_code = res.unwrap_error();
                         goto err_ret;
                     }
@@ -174,7 +169,6 @@ namespace chfs {
                     // deallocate the block
                     auto res = this->block_allocator_->deallocate(indirect_inode_->blocks[idx - inlined_blocks_num]);
                     if (res.is_err()) {
-                        LOG_FORMAT_ERROR("indirect deallocate error");
                         error_code = res.unwrap_error();
                         goto err_ret;
                     }
@@ -188,12 +182,12 @@ namespace chfs {
                 // deallocate the indirect block
                 auto res = this->block_allocator_->deallocate(inode_p->get_indirect_block_id());
                 if (res.is_err()) {
-                    LOG_FORMAT_ERROR("deallocate indirect block error");
                     error_code = res.unwrap_error();
                     goto err_ret;
                 }
                 inode_p->invalid_indirect_block_id();
                 indirect_block.clear();
+                indirect_block.resize(0);
             }
         }
 
@@ -222,20 +216,21 @@ namespace chfs {
                     if (!indirect_block.empty()) {
                         auto *indirect_inode = reinterpret_cast<Inode *>(indirect_block.data());
                         w_block_id = indirect_inode->blocks[block_idx - inlined_blocks_num];
+                    } else {
+                        indirect_block.resize(block_size);
+                        auto indirect_block_res = this->block_manager_->read_block(
+                                inode_p->get_indirect_block_id(), indirect_block.data());
+                        if (indirect_block_res.is_err()) {
+                            error_code = indirect_block_res.unwrap_error();
+                            goto err_ret;
+                        }
+                        auto *indirect_inode = reinterpret_cast<Inode *>(indirect_block.data());
+                        w_block_id = indirect_inode->blocks[block_idx - inlined_blocks_num];
                     }
                 }
 
-//                 write to current block.
-                if (id == 38) {
-                    for (int i = 0; i < sz; i++) {
-                        if (buffer[i] != content[write_sz + i]) {
-                            LOG_FORMAT_ERROR("write: {} and {} mismatch", buffer[i], content[write_sz + i]);
-                        }
-                    }
-                }
                 auto write_res = this->block_manager_->write_partial_block(w_block_id, buffer.data(), 0, sz);
                 if (write_res.is_err()) {
-                    LOG_FORMAT_ERROR("write block error");
                     error_code = write_res.unwrap_error();
                     goto err_ret;
                 }
@@ -251,7 +246,6 @@ namespace chfs {
             auto write_res =
                     this->block_manager_->write_block(inode_res.unwrap(), inode.data());
             if (write_res.is_err()) {
-                LOG_FORMAT_ERROR("write block error");
                 error_code = write_res.unwrap_error();
                 goto err_ret;
             }
@@ -259,7 +253,6 @@ namespace chfs {
                 write_res =
                         inode_p->write_indirect_block(this->block_manager_, indirect_block);
                 if (write_res.is_err()) {
-                    LOG_FORMAT_ERROR("write indirect block error");
                     error_code = write_res.unwrap_error();
                     goto err_ret;
                 }
@@ -293,7 +286,6 @@ namespace chfs {
 
         auto inode_res = this->inode_manager_->read_inode(id, inode);
         if (inode_res.is_err()) {
-            LOG_FORMAT_ERROR("read inode error");
             error_code = inode_res.unwrap_error();
             // I know goto is bad, but we have no choice
             goto err_ret;
@@ -340,15 +332,7 @@ namespace chfs {
                 error_code = read_res.unwrap_error();
                 goto err_ret;
             }
-//            if (id == 38) {
-//                for (int i = 0; i < sz; i++) {
-//                    if (buffer[i] != content[read_sz + i]) {
-//                        LOG_FORMAT_ERROR("read: {} and {} mismatch, {}, r_block_id: {}", buffer[i],
-//                                         content[read_sz + i], i, r_block_id);
-//                        CHFS_ASSERT(false, "quit!");
-//                    }
-//                }
-//            }
+
             content.insert(content.end(), buffer.begin(), buffer.begin() + sz);
             read_sz += sz;
             block_idx += 1;
