@@ -5,6 +5,8 @@ CMD bash
 # Install Ubuntu packages.
 # Please add packages in alphabetical order.
 ARG DEBIAN_FRONTEND=noninteractive
+RUN  sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
+RUN  apt-get clean
 RUN apt-get -y update && \
     apt-get -y install \
       build-essential \

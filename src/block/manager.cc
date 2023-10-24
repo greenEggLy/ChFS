@@ -9,27 +9,27 @@
 
 namespace chfs {
 
-auto get_file_sz(std::string &file_name) -> usize {
-  std::filesystem::path path = file_name;
-  return std::filesystem::file_size(path);
-}
+    auto get_file_sz(std::string &file_name) -> usize {
+        std::filesystem::path path = file_name;
+        return std::filesystem::file_size(path);
+    }
 
 /**
  * If the opened block manager's backed file is empty,
  * we will initialize it to a pre-defined size.
  */
-auto initialize_file(int fd, u64 total_file_sz) {
-  if (ftruncate(fd, total_file_sz) == -1) {
-    CHFS_ASSERT(false, "Failed to initialize the block manager file");
-  }
-}
+    auto initialize_file(int fd, u64 total_file_sz) {
+        if (ftruncate(fd, total_file_sz) == -1) {
+            CHFS_ASSERT(false, "Failed to initialize the block manager file");
+        }
+    }
 
 /**
  * Constructor: open/create a single database file & log file
  * @input db_file: database file name
  */
-BlockManager::BlockManager(const std::string &file)
-    : BlockManager(file, KDefaultBlockCnt) {}
+    BlockManager::BlockManager(const std::string &file)
+            : BlockManager(file, KDefaultBlockCnt) {}
 
 /**
  * Creates a new block manager that writes to a file-backed block device.
@@ -61,76 +61,47 @@ BlockManager::BlockManager(const std::string &file, usize block_cnt)
   this->fd = open(file.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   CHFS_ASSERT(this->fd != -1, "Failed to open the block manager file");
 
-  auto file_sz = get_file_sz(this->file_name_);
-  if (file_sz == 0) {
-    initialize_file(this->fd, this->total_storage_sz());
-  } else {
-    this->block_cnt = file_sz / this->block_sz;
-    CHFS_ASSERT(this->total_storage_sz() == KDefaultBlockCnt * this->block_sz,
-                "The file size mismatches");
-  }
+        auto file_sz = get_file_sz(this->file_name_);
+        if (file_sz == 0) {
+            initialize_file(this->fd, this->total_storage_sz());
+        } else {
+            this->block_cnt = file_sz / this->block_sz;
+            CHFS_ASSERT(this->total_storage_sz() == KDefaultBlockCnt * this->block_sz,
+                        "The file size mismatches");
+        }
 
-  this->block_data =
-      static_cast<u8 *>(mmap(nullptr, this->total_storage_sz(),
-                             PROT_READ | PROT_WRITE, MAP_SHARED, this->fd, 0));
-  CHFS_ASSERT(this->block_data != MAP_FAILED, "Failed to mmap the data");
-}
-
-BlockManager::BlockManager(const std::string &file, usize block_cnt, bool is_log_enabled)
-    : file_name_(file), block_cnt(block_cnt), in_memory(false) {
-  this->write_fail_cnt = 0;
-  this->maybe_failed = false;
-  // TODO: Implement this function.
-  UNIMPLEMENTED();    
-}
-
-auto BlockManager::write_block(block_id_t block_id, const u8 *data)
-    -> ChfsNullResult {
-  if (this->maybe_failed && block_id < this->block_cnt) {
-    if (this->write_fail_cnt >= 3) {
-      this->write_fail_cnt = 0;
-      return KNullOk;
+        this->block_data =
+                static_cast<u8 *>(mmap(nullptr, this->total_storage_sz(),
+                                       PROT_READ | PROT_WRITE, MAP_SHARED, this->fd, 0));
+        CHFS_ASSERT(this->block_data != MAP_FAILED, "Failed to mmap the data");
     }
-  }
-  
 
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-  this->write_fail_cnt++;
-  return KNullOk;
-}
-
-auto BlockManager::write_partial_block(block_id_t block_id, const u8 *data,
-                                       usize offset, usize len)
+    auto BlockManager::write_block(block_id_t block_id, const u8 *data)
     -> ChfsNullResult {
-  if (this->maybe_failed && block_id < this->block_cnt) {
-    if (this->write_fail_cnt >= 3) {
-      this->write_fail_cnt = 0;
-      return KNullOk;
+        auto block = this->block_data + block_id * block_sz;
+        memcpy(block, data, block_sz);
+        return KNullOk;
     }
-  }
 
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-  this->write_fail_cnt++;
-  return KNullOk;
-}
+    auto BlockManager::write_partial_block(block_id_t block_id, const u8 *data,
+                                           usize offset, usize len)
+    -> ChfsNullResult {
+        auto block = this->block_data + block_id * block_sz + offset;
+        memcpy(block, data, len);
+        return KNullOk;
+    }
 
-auto BlockManager::read_block(block_id_t block_id, u8 *data) -> ChfsNullResult {
+    auto BlockManager::read_block(block_id_t block_id, u8 *data) -> ChfsNullResult {
+        auto block = this->block_data + block_id * block_sz;
+        memcpy(data, block, block_sz);
+        return KNullOk;
+    }
 
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
-  return KNullOk;
-}
-
-auto BlockManager::zero_block(block_id_t block_id) -> ChfsNullResult {
-  
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
-  return KNullOk;
-}
+    auto BlockManager::zero_block(block_id_t block_id) -> ChfsNullResult {
+        auto block = this->block_data + block_id * block_sz;
+        memset(block, 0, block_sz);
+        return KNullOk;
+    }
 
 auto BlockManager::sync(block_id_t block_id) -> ChfsNullResult {
   if (block_id >= this->block_cnt) {
