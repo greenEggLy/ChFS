@@ -42,8 +42,8 @@ namespace chfs {
             : block_sz(block_size), file_name_("in-memory"), fd(-1),
               block_cnt(block_cnt), in_memory(true) {
         // An important step to prevent overflow
-  this->write_fail_cnt = 0;
-  this->maybe_failed = false;
+        this->write_fail_cnt = 0;
+        this->maybe_failed = false;
         u64 buf_sz = static_cast<u64>(block_cnt) * static_cast<u64>(block_size);
         CHFS_VERIFY(buf_sz > 0, "Santiy check buffer size fails");
         this->block_data = new u8[buf_sz];
@@ -95,7 +95,7 @@ namespace chfs {
         auto block = this->block_data + block_id * block_sz;
         memcpy(block, data, block_sz);
 //    return KNullOk;
-//  this->write_fail_cnt++;
+        this->write_fail_cnt++;
         return KNullOk;
     }
 
