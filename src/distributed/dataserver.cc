@@ -1,4 +1,6 @@
 #include "distributed/dataserver.h"
+
+#include <memory>
 #include "common/util.h"
 #include "common/logger.h"
 
@@ -13,8 +15,8 @@ namespace chfs {
          */
         bool is_initialized = is_file_exist(data_path);
 
-        auto bm = std::shared_ptr<BlockManager>(
-                new BlockManager(data_path, KDefaultBlockCnt));
+        auto bm = std::make_shared<BlockManager>(
+                data_path, KDefaultBlockCnt);
         if (is_initialized) {
             auto version_blocks_cnt =
                     (KDefaultBlockCnt * sizeof(version_t)) / DiskBlockSize;
@@ -24,8 +26,8 @@ namespace chfs {
             // We need to reserve some blocks for storing the version of each block
             auto version_blocks_cnt =
                     (KDefaultBlockCnt * sizeof(version_t)) / DiskBlockSize;
-            block_allocator_ = std::shared_ptr<BlockAllocator>(
-                    new BlockAllocator(bm, version_blocks_cnt, true));
+            block_allocator_ = std::make_shared<BlockAllocator>(
+                    bm, version_blocks_cnt, true);
             for (block_id_t i = 0; i < version_blocks_cnt; i++) {
                 bm->zero_block(i);
             }

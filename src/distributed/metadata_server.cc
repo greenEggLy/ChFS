@@ -149,12 +149,11 @@ namespace chfs {
         if (res.is_err()) return {};
         auto data = res.unwrap();
         std::vector<BlockInfo> result;
-        auto pair_size = sizeof(std::pair<block_id_t, mac_id_t>);
-        for (unsigned long i = 0; i < data.size() / pair_size; i += pair_size) {
-            auto pair = *(std::pair<block_id_t, mac_id_t> *) (data.data() + i);
-            auto client = this->clients_[pair.second];
-            // TODO: version
-            result.emplace_back(pair.first, pair.second, 0);
+        auto tuple_size = sizeof(BlockInfo);
+        for (unsigned long i = 0; i < data.size(); i += tuple_size) {
+            auto tuple = *(BlockInfo *) (data.data() + i);
+            auto [block_id, mac_id, version] = tuple;
+            result.emplace_back(block_id, mac_id, version);
         }
         return result;
     }
@@ -170,12 +169,9 @@ namespace chfs {
         auto res1 = operation_->read_file(id);
         if (res1.is_err()) return {};
         auto data = res1.unwrap();
-        std::vector<u8> content(sizeof(std::pair<block_id_t, mac_id_t>));
-        *((std::pair<block_id_t, mac_id_t> *) content.data()) = std::make_pair(block_id, machine_id);
-//        auto bytes = reinterpret_cast<u8 *>(block_id);
-//        content.insert(content.end(), bytes, bytes + sizeof(block_id_t));
-//        bytes = reinterpret_cast<u8 *>(machine_id);
-//        content.insert(content.end(), bytes, bytes + sizeof(mac_id_t));
+        std::vector<u8> content(sizeof(BlockInfo));
+        *((BlockInfo *) content.data()) = std::make_tuple(block_id, machine_id,
+                                                          version);
         data.insert(data.end(), content.begin(), content.end());
         auto res2 = operation_->write_file(id, data);
         if (res2.is_err()) return {};
@@ -189,13 +185,15 @@ namespace chfs {
         if (res.is_err()) return false;
         auto data = res.unwrap();
         auto size = data.size();
-        auto pair_size = sizeof(std::pair<block_id_t, mac_id_t>);
-        for (unsigned long i = 0; i < size; i += pair_size) {
-            auto pair = *(std::pair<block_id_t, mac_id_t> *) (data.data() + i);
-            if (pair.first == block_id && pair.second == machine_id) {
+        auto meta_block_size = sizeof(BlockInfo);
+        for (unsigned long i = 0; i < size; i += meta_block_size) {
+            auto tuple = *(BlockInfo *) (data.data() + i);
+            if (std::get<0>(tuple) == block_id && std::get<1>(tuple) == machine_id) {
                 auto client = clients_[machine_id];
                 auto res1 = client->call("free_block", block_id);
                 if (res1.is_err()) return false;
+                std::get<2>(tuple)++;
+                this->operation_->write_file(id, data);
                 return true;
             }
         }
