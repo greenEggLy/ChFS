@@ -37,4 +37,4 @@ TEST(FileSystemTest, CreateAndGetAttr) {
   }
 }
 
-} // namespace chfs
+}  // namespace chfs

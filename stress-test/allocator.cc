@@ -1,8 +1,9 @@
+#include "block/allocator.h"
+
 #include <gtest/gtest.h>
+
 #include <random>
 #include <unordered_set>
-
-#include "block/allocator.h"
 
 namespace chfs {
 
@@ -62,7 +63,7 @@ TEST(BlockAllocatorTest, StressTest1) {
             << std::endl;
 }
 
-} // namespace chfs
+}  // namespace chfs
 
 int main(int argc, char **argv) {
   // Initialize Google Test

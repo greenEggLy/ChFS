@@ -17,4 +17,4 @@ auto Inode::write_indirect_block(std::shared_ptr<BlockManager> &bm,
   return bm->write_block(this->blocks[this->nblocks - 1], buffer.data());
 }
 
-} // namespace chfs
+}  // namespace chfs

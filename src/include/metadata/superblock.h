@@ -43,7 +43,7 @@ class SuperBlock {
   std::shared_ptr<BlockManager> bm;
   SuperBlockInternal inner;
 
-public:
+ public:
   /**
    * Constructor
    * Note that this constructor is called upon the first time the filesystem is
@@ -79,8 +79,8 @@ public:
   u64 get_nblocks() const { return inner.nblocks; }
   u64 get_ninodes() const { return inner.ninodes; }
 
-private:
+ private:
   explicit SuperBlock(std::shared_ptr<BlockManager> bm) : bm(bm) {}
 };
 
-} // namespace chfs
+}  // namespace chfs

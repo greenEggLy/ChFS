@@ -11,7 +11,8 @@ TEST(BasicFileSystemTest, Init) {
 
   auto total_nblocks = 32768;
   auto reserved_blocks =
-      1 + 128 + 2 + 8; // superblock + inode table + inode bitmap + block bitmap
+      1 + 128 + 2 +
+      8;  // superblock + inode table + inode bitmap + block bitmap
   ASSERT_EQ(fs.get_free_blocks_num().unwrap(), total_nblocks - reserved_blocks);
 
   // try allocate a block
@@ -29,4 +30,4 @@ TEST(BasicFileSystemTest, Init) {
   std::cout << "Basic FS test done" << std::endl;
 }
 
-} // namespace chfs
+}  // namespace chfs

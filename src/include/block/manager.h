@@ -29,18 +29,18 @@ class BlockIterator;
 class BlockManager {
   friend class BlockIterator;
 
-protected:
+ protected:
   const usize block_sz = 4096;
 
   std::string file_name_;
   int fd;
   u8 *block_data;
   usize block_cnt;
-  bool in_memory; // whether we use in-memory to emulate the block manager
+  bool in_memory;  // whether we use in-memory to emulate the block manager
   bool maybe_failed;
   usize write_fail_cnt;
 
-public:
+ public:
   /**
    * Creates a new block manager that writes to a file-backed block device.
    * @param block_file the file name of the  file to write to
@@ -69,7 +69,7 @@ public:
   /**
    * Creates a new block manager that writes to a file-backed block device.
    * It reserves some blocks for recording logs.
-   * 
+   *
    * @param block_file the file name of the  file to write to
    * @param block_cnt the number of blocks in the device
    * @param is_log_enabled whether to enable log
@@ -139,9 +139,7 @@ public:
   /**
    * Mark the block manager as may fail state
    */
-  auto set_may_fail(bool may_fail) -> void {
-    this->maybe_failed = may_fail;
-  }
+  auto set_may_fail(bool may_fail) -> void { this->maybe_failed = may_fail; }
 };
 
 /**
@@ -158,7 +156,7 @@ class BlockIterator {
 
   std::vector<u8> buffer;
 
-public:
+ public:
   /**
    * Creates a new block iterator.
    *
@@ -200,10 +198,11 @@ public:
     return this->buffer[this->cur_block_off % bm->block_sz];
   }
 
-  template <typename T> auto unsafe_get_value_ptr() -> T * {
+  template <typename T>
+  auto unsafe_get_value_ptr() -> T * {
     return reinterpret_cast<T *>(this->buffer.data() +
                                  this->cur_block_off % bm->block_sz);
   }
 };
 
-} // namespace chfs
+}  // namespace chfs

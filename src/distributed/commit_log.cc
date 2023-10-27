@@ -1,11 +1,12 @@
+#include "distributed/commit_log.h"
+
 #include <algorithm>
+#include <chrono>
 
 #include "common/bitmap.h"
-#include "distributed/commit_log.h"
 #include "distributed/metadata_server.h"
 #include "filesystem/directory_op.h"
 #include "metadata/inode.h"
-#include <chrono>
 
 namespace chfs {
 /**
@@ -14,8 +15,7 @@ namespace chfs {
 // {Your code here}
 CommitLog::CommitLog(std::shared_ptr<BlockManager> bm,
                      bool is_checkpoint_enabled)
-    : is_checkpoint_enabled_(is_checkpoint_enabled), bm_(bm) {
-}
+    : is_checkpoint_enabled_(is_checkpoint_enabled), bm_(bm) {}
 
 CommitLog::~CommitLog() {}
 
@@ -51,4 +51,4 @@ auto CommitLog::recover() -> void {
   // TODO: Implement this function.
   UNIMPLEMENTED();
 }
-}; // namespace chfs
+};  // namespace chfs

@@ -39,7 +39,7 @@ class InodeManager {
   u64 n_table_blocks;
   u64 n_bitmap_blocks;
 
-public:
+ public:
   /**
    * Construct an InodeManager from scratch.
    * Note that it will initialize the blocks in the block manager.
@@ -120,14 +120,16 @@ public:
    */
   auto set_table(inode_id_t idx, block_id_t bid) -> ChfsNullResult;
 
-private:
+ private:
   /**
    * Simple constructors
    */
   InodeManager(std::shared_ptr<BlockManager> bm, u64 max_inode_supported,
                u64 ntables, u64 nbit)
-      : bm(bm), max_inode_supported(max_inode_supported),
-        n_table_blocks(ntables), n_bitmap_blocks(nbit) {}
+      : bm(bm),
+        max_inode_supported(max_inode_supported),
+        n_table_blocks(ntables),
+        n_bitmap_blocks(nbit) {}
 
   /**
    * Read the inode to a buffer
@@ -137,4 +139,4 @@ private:
       -> ChfsResult<block_id_t>;
 };
 
-} // namespace chfs
+}  // namespace chfs

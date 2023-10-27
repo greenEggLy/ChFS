@@ -5,8 +5,9 @@ namespace chfs {
 
 FileOperation::FileOperation(std::shared_ptr<BlockManager> bm,
                              u64 max_inode_supported)
-    : block_manager_(bm), inode_manager_(std::shared_ptr<InodeManager>(
-                              new InodeManager(bm, max_inode_supported))),
+    : block_manager_(bm),
+      inode_manager_(std::shared_ptr<InodeManager>(
+          new InodeManager(bm, max_inode_supported))),
       block_allocator_(std::shared_ptr<BlockAllocator>(
           new BlockAllocator(bm, inode_manager_->get_reserved_blocks()))) {
   // now initialize the superblock
@@ -113,4 +114,4 @@ err_ret:
   return ChfsNullResult(error_code);
 }
 
-} // namespace chfs
+}  // namespace chfs

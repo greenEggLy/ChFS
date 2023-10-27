@@ -11,15 +11,15 @@
 
 #pragma once
 
-#include <iterator>
 #include <string.h>
 #include <time.h>
 
-#include "common/config.h"
-#include "common/macros.h"
+#include <iterator>
 
 #include "block/allocator.h"
 #include "block/manager.h"
+#include "common/config.h"
+#include "common/macros.h"
 
 namespace chfs {
 
@@ -42,7 +42,7 @@ class FileOperation;
 class FileAttr {
   friend class Inode;
 
-public:
+ public:
   u64 atime = 0;
   u64 mtime = 0;
   u64 ctime = 0;
@@ -88,10 +88,10 @@ class Inode {
   u32 nblocks;
   // The actual number of blocks should be larger,
   // which is dynamically calculated based on the block size
-public:
+ public:
   [[maybe_unused]] block_id_t blocks[0];
 
-public:
+ public:
   /**
    * Create a new inode for a file or directory
    * @param type: the inode type
@@ -186,8 +186,7 @@ public:
    * ```
    */
   block_id_t &operator[](size_t index) {
-    if (index >= this->nblocks)
-      throw std::out_of_range("Index out of range");
+    if (index >= this->nblocks) throw std::out_of_range("Index out of range");
     return this->blocks[index];
   }
 
@@ -249,7 +248,7 @@ class InodeIterator {
 
   InodeIterator(Inode *inode) : InodeIterator(inode, 0) {}
 
-public:
+ public:
   InodeIterator &operator++() {
     cur_idx++;
     return *this;
@@ -270,4 +269,4 @@ public:
   block_id_t &operator*() const { return inode->blocks[cur_idx]; }
 };
 
-} // namespace chfs
+}  // namespace chfs

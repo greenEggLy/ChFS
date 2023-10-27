@@ -17,7 +17,7 @@
 
 namespace chfs {
 
-const u32 KFailureRate = 10; // Network failure rate = 1/KFailureRate
+const u32 KFailureRate = 10;  // Network failure rate = 1/KFailureRate
 
 using RpcResponse = RPCLIB_MSGPACK::object_handle;
 
@@ -29,7 +29,7 @@ using RpcResponse = RPCLIB_MSGPACK::object_handle;
  * and disconnects when destroyed.
  */
 class RpcClient {
-public:
+ public:
   /**
    * Construct a Client.
    *
@@ -140,9 +140,9 @@ public:
    */
   auto get_connection_state() -> rpc::client::connection_state;
 
-private:
+ private:
   std::unique_ptr<rpc::client> client;
   bool reliable;
   RandomNumberGenerator generator;
 };
-} // namespace chfs
+}  // namespace chfs

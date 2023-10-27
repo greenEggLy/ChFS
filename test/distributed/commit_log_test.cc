@@ -1,13 +1,15 @@
 #include "distributed/commit_log.h"
-#include "distributed/metadata_server.h"
-#include "gtest/gtest.h"
+
 #include <chrono>
 #include <thread>
+
+#include "distributed/metadata_server.h"
+#include "gtest/gtest.h"
 
 namespace chfs {
 
 class CommitLogTest : public ::testing::Test {
-protected:
+ protected:
   const u16 meta_port = 8080;
   const std::string inode_path = "/tmp/inode_file";
 
@@ -162,4 +164,4 @@ TEST_F(CommitLogTest, CheckCheckpointFunctional) {
   std::remove(inode_path.c_str());
 }
 
-} // namespace chfs
+}  // namespace chfs

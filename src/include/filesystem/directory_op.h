@@ -64,4 +64,4 @@ auto rm_from_directory(std::string src, std::string filename) -> std::string;
 auto read_directory(FileOperation *fs, inode_id_t inode,
                     std::list<DirectoryEntry> &list) -> ChfsNullResult;
 
-} // namespace chfs
+}  // namespace chfs

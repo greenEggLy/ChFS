@@ -1,4 +1,5 @@
 #include "librpc/client.h"
+
 #include "common/error_code.h"
 
 namespace chfs {
@@ -14,4 +15,4 @@ auto RpcClient::get_connection_state() -> rpc::client::connection_state {
   return client->get_connection_state();
 }
 
-} // namespace chfs
+}  // namespace chfs

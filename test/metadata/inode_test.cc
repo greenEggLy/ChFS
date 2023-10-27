@@ -1,14 +1,16 @@
-#include "common/macros.h"
 #include "metadata/inode.h"
-#include "gtest/gtest.h"
+
 #include <cstring>
+
+#include "common/macros.h"
+#include "gtest/gtest.h"
 
 namespace chfs {
 
 #define TEST_BLOCK_SZ 4096
 
 class InodeTest : public ::testing::Test {
-protected:
+ protected:
   u8 test_inode_block[TEST_BLOCK_SZ];
 
   // This function is called before every test.
@@ -39,7 +41,7 @@ TEST_F(InodeTest, Init) {
       static_cast<u64>(TEST_BLOCK_SZ);
   auto file_in_inode =
       static_cast<u64>((TEST_BLOCK_SZ - sizeof(Inode)) / sizeof(block_id_t) -
-                       1) * // 1: the indirect block
+                       1) *  // 1: the indirect block
       static_cast<u64>(TEST_BLOCK_SZ);
   ASSERT_EQ(inode.max_file_sz_supported(),
             file_sz_supported_by_one_block + file_in_inode);
@@ -73,4 +75,4 @@ TEST_F(InodeTest, IterationWrite) {
   ASSERT_EQ(count, inode_p->get_nblocks());
 }
 
-} // namespace chfs
+}  // namespace chfs
