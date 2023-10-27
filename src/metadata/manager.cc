@@ -244,21 +244,21 @@ namespace chfs {
 
         inode_id_t idx = LOGIC_2_RAW(id);
         auto len = sizeof(block_id_t);
+        auto inode_entry_per_block = bm->block_size() / len;
 
         // clear the entry
-        block_id_t block_id = 1 + idx * len / bm->block_size();
-        auto offset = idx * len % bm->block_size();
+        block_id_t block_id = 1 + idx / inode_entry_per_block;
+//        block_id_t block_id = idx / inode_entry_per_block;
+        auto offset = idx % inode_entry_per_block;
 
         std::vector<u8> buffer(bm->block_size());
-        bm->read_block(block_id, buffer.data());
-
-        memset(buffer.data() + offset, 0, len);
-        bm->write_block(block_id, buffer.data());
+        std::vector<u8> buffer_(sizeof(block_id_t));
+        bm->write_partial_block(block_id, buffer_.data(), offset, sizeof(block_id_t));
 
         // clear the bitmap
-        auto payload = bm->block_size() * KBitsPerByte;
-        auto bitmap_block_id = 1 + n_bitmap_blocks + block_id / payload;
-        auto bitmap_offset = block_id % payload;
+        auto num_bits_per_block = bm->block_size() * KBitsPerByte;
+        auto bitmap_block_id = 1 + n_table_blocks + idx / num_bits_per_block;
+        auto bitmap_offset = idx % num_bits_per_block;
         bm->read_block(bitmap_block_id, buffer.data());
         auto bitmap = Bitmap(buffer.data(), bm->block_size());
         bitmap.clear(bitmap_offset);

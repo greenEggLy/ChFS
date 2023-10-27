@@ -2,6 +2,7 @@
 #include <sstream>
 
 #include "filesystem/directory_op.h"
+#include "common/logger.h"
 
 namespace chfs {
 
@@ -140,27 +141,25 @@ namespace chfs {
 // {Your code here}
     auto FileOperation::unlink(inode_id_t parent, const char *name)
     -> ChfsNullResult {
-        auto res = lookup(parent, name);
+        // remove from parent
+        auto res = read_file(parent);
         if (res.is_err()) {
             return {res.unwrap_error()};
         }
-        // remove file
-        auto inode = res.unwrap();
-        auto res_ = remove_file(inode);
-        if (res_.is_err()) {
-            return {res_.unwrap_error()};
+        auto content = res.unwrap();
+        auto src = std::string(content.begin(), content.end());
+        std::list<DirectoryEntry> list;
+        parse_directory(src, list);
+        for (const auto &item: list) {
+            if (item.name == name) {
+                inode_manager_->free_inode(item.id);
+                break;
+            }
         }
-        // remove from parent
-        auto content = read_file(parent);
-        if (content.is_err()) {
-            return {content.unwrap_error()};
-        }
-        auto contents = content.unwrap();
-        auto src = std::string(contents.begin(), contents.end());
         src = rm_from_directory(src, name);
-        auto _res = write_file(parent, std::vector<u8>(src.begin(), src.end()));
-        if (_res.is_err()) {
-            return {_res.unwrap_error()};
+        auto res2 = write_file(parent, std::vector<u8>(src.begin(), src.end()));
+        if (res2.is_err()) {
+            return {res2.unwrap_error()};
         }
         return KNullOk;
     }
