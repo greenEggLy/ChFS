@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include <shared_mutex>
+
 #include "common/config.h"
 #include "common/util.h"
 #include "distributed/commit_log.h"
@@ -245,6 +247,9 @@ class MetadataServer {
   /**
    * {You can add anything you want here}
    */
+
+  std::shared_mutex meta_mtx;
+  std::shared_mutex data_mtx;
 };
 
 }  // namespace chfs

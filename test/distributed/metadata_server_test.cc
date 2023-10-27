@@ -215,6 +215,20 @@ TEST_F(MetadataServerTest, CheckReadDir) {
   clean_data();
 }
 
+TEST_F(MetadataServerTest, SimpleCheck) {
+  auto dir_id_1 = meta_srv->mknode(DirectoryType, 1, "SubDirA");
+  EXPECT_EQ(dir_id_1, 2);
+
+  for (int i = 0; i < 2; i++) {
+    std::string file_name = "file1_" + std::to_string(i);
+    auto file_id = meta_srv->mknode(RegularFileType, dir_id_1, file_name);
+    EXPECT_GT(file_id, 0);
+    auto unlink_res = meta_srv->unlink(dir_id_1, file_name);
+    EXPECT_EQ(unlink_res, true);
+  }
+  clean_data();
+}
+
 TEST_F(MetadataServerTest, CheckUnlink) {
   auto dir_id = meta_srv->mknode(DirectoryType, 1, "test_dir");
   EXPECT_EQ(dir_id, 2);

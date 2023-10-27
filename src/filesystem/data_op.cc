@@ -1,5 +1,6 @@
 #include <ctime>
 
+#include "common/logger.h"
 #include "filesystem/operations.h"
 
 namespace chfs {

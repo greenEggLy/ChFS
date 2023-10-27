@@ -94,7 +94,6 @@ auto DataServer::write_data(block_id_t block_id, usize offset,
   auto res = block_allocator_->bm->write_partial_block(block_id, buffer.data(),
                                                        offset, buffer.size());
   if (res.is_err()) {
-    LOG_FORMAT_INFO("write error");
     return false;
   }
   return true;

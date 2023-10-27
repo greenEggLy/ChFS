@@ -2,6 +2,7 @@
 
 #include <fstream>
 
+#include "common/logger.h"
 #include "common/util.h"
 #include "filesystem/directory_op.h"
 
@@ -125,6 +126,7 @@ MetadataServer::MetadataServer(std::string const &address, u16 port,
 // {Your code here}
 auto MetadataServer::mknode(u8 type, inode_id_t parent, const std::string &name)
     -> inode_id_t {
+  std::lock_guard<std::shared_mutex> lockGuard(meta_mtx);
   auto res =
       this->operation_->mk_helper(parent, name.data(), (InodeType)(type));
   if (res.is_err()) return 0;
@@ -134,6 +136,7 @@ auto MetadataServer::mknode(u8 type, inode_id_t parent, const std::string &name)
 // {Your code here}
 auto MetadataServer::unlink(inode_id_t parent, const std::string &name)
     -> bool {
+  std::lock_guard<std::shared_mutex> lockGuard(meta_mtx);
   auto res = this->operation_->unlink(parent, name.data());
   if (res.is_err()) return false;
   return true;
@@ -142,6 +145,7 @@ auto MetadataServer::unlink(inode_id_t parent, const std::string &name)
 // {Your code here}
 auto MetadataServer::lookup(inode_id_t parent, const std::string &name)
     -> inode_id_t {
+  std::lock_guard<std::shared_mutex> lockGuard(meta_mtx);
   auto res = this->operation_->lookup(parent, name.data());
   if (res.is_err()) return 0;
   return res.unwrap();
@@ -149,6 +153,7 @@ auto MetadataServer::lookup(inode_id_t parent, const std::string &name)
 
 // {Your code here}
 auto MetadataServer::get_block_map(inode_id_t id) -> std::vector<BlockInfo> {
+  std::lock_guard<std::shared_mutex> lockGuard(meta_mtx);
   auto res = this->operation_->read_file(id);
   if (res.is_err()) return {};
   auto data = res.unwrap();
@@ -164,6 +169,7 @@ auto MetadataServer::get_block_map(inode_id_t id) -> std::vector<BlockInfo> {
 
 // {Your code here}
 auto MetadataServer::allocate_block(inode_id_t id) -> BlockInfo {
+  std::lock_guard<std::shared_mutex> lockGuard(meta_mtx);
   auto machine_id = generator.rand(1, this->num_data_servers);
   auto client = clients_[machine_id];
   auto res = client->call("alloc_block");
@@ -185,6 +191,7 @@ auto MetadataServer::allocate_block(inode_id_t id) -> BlockInfo {
 // {Your code here}
 auto MetadataServer::free_block(inode_id_t id, block_id_t block_id,
                                 mac_id_t machine_id) -> bool {
+  std::lock_guard<std::shared_mutex> lockGuard(meta_mtx);
   auto res = this->operation_->read_file(id);
   if (res.is_err()) return false;
   auto data = res.unwrap();
@@ -196,7 +203,7 @@ auto MetadataServer::free_block(inode_id_t id, block_id_t block_id,
       auto client = clients_[machine_id];
       auto res1 = client->call("free_block", block_id);
       if (res1.is_err()) return false;
-      std::get<2>(tuple)++;
+      data.erase(data.begin() + i, data.begin() + i + meta_block_size);
       this->operation_->write_file(id, data);
       return true;
     }
@@ -207,6 +214,7 @@ auto MetadataServer::free_block(inode_id_t id, block_id_t block_id,
 // {Your code here}
 auto MetadataServer::readdir(inode_id_t node)
     -> std::vector<std::pair<std::string, inode_id_t>> {
+  std::lock_guard<std::shared_mutex> lockGuard(meta_mtx);
   std::list<DirectoryEntry> list;
   std::vector<std::pair<std::string, inode_id_t>> ret_val;
   auto res = read_directory(operation_.get(), node, list);
@@ -220,6 +228,7 @@ auto MetadataServer::readdir(inode_id_t node)
 // {Your code here}
 auto MetadataServer::get_type_attr(inode_id_t id)
     -> std::tuple<u64, u64, u64, u64, u8> {
+  std::lock_guard<std::shared_mutex> lockGuard(meta_mtx);
   auto res = this->operation_->get_type_attr(id);
   if (res.is_err()) return {};
   auto type = (u8)res.unwrap().first;

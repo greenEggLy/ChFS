@@ -3,8 +3,8 @@
 #include <vector>
 
 #include "common/bitmap.h"
+#include "common/logger.h"
 #include "metadata/inode.h"
-
 namespace chfs {
 
 /**
@@ -125,8 +125,7 @@ auto InodeManager::allocate_inode(InodeType type, block_id_t bid)
 auto InodeManager::set_table(inode_id_t idx, block_id_t bid) -> ChfsNullResult {
   auto len = sizeof(block_id_t);
   block_id_t block_id = 1 + idx * len / bm->block_size();
-  auto offset = idx * len % bm->block_size();
-
+  auto offset = idx % (bm->block_size() / len) * len;
   std::vector<u8> buffer(len);
   memcpy(buffer.data(), &bid, len);
   bm->write_partial_block(block_id, buffer.data(), offset, len);
@@ -142,13 +141,12 @@ auto InodeManager::get(inode_id_t id) -> ChfsResult<block_id_t> {
   inode_id_t idx = LOGIC_2_RAW(id);
   // search in inode entry
   block_id_t block_id = 1 + idx * len / bm->block_size();
-  auto offset = idx * len % bm->block_size();
+  auto offset = idx % (bm->block_size() / len) * len;
 
   std::vector<u8> buffer(bm->block_size());
   bm->read_block(block_id, buffer.data());
 
   memcpy(&res_block_id, buffer.data() + offset, len);
-
   return ChfsResult<block_id_t>(res_block_id);
 }
 
@@ -210,6 +208,7 @@ auto InodeManager::get_type_attr(inode_id_t id)
 // Note: the buffer must be as large as block size
 auto InodeManager::read_inode(inode_id_t id, std::vector<u8> &buffer)
     -> ChfsResult<block_id_t> {
+  //  inode_id_t idx = LOGIC_2_RAW(id);
   if (id >= max_inode_supported - 1) {
     return ChfsResult<block_id_t>(ErrorType::INVALID_ARG);
   }
@@ -218,7 +217,6 @@ auto InodeManager::read_inode(inode_id_t id, std::vector<u8> &buffer)
   if (block_id.is_err()) {
     return ChfsResult<block_id_t>(block_id.unwrap_error());
   }
-
   if (block_id.unwrap() == KInvalidBlockID) {
     return ChfsResult<block_id_t>(ErrorType::INVALID_ARG);
   }
@@ -250,7 +248,7 @@ auto InodeManager::free_inode(inode_id_t id) -> ChfsNullResult {
   // clear the entry
   block_id_t block_id = 1 + idx / inode_entry_per_block;
   //        block_id_t block_id = idx / inode_entry_per_block;
-  auto offset = idx % inode_entry_per_block;
+  auto offset = idx % inode_entry_per_block * len;
 
   std::vector<u8> buffer(bm->block_size());
   std::vector<u8> buffer_(sizeof(block_id_t));

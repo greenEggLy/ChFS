@@ -8,6 +8,8 @@
 #include <cstring>
 #include <filesystem>
 
+#include "common/logger.h"
+
 namespace chfs {
 
 auto get_file_sz(std::string &file_name) -> usize {

@@ -152,11 +152,12 @@ auto FileOperation::unlink(inode_id_t parent, const char *name)
   parse_directory(src, list);
   for (const auto &item : list) {
     if (item.name == name) {
-      inode_manager_->free_inode(item.id);
+      //      inode_manager_->free_inode(item.id);
+      remove_file(item.id);
       break;
     }
   }
-  src = rm_from_directory(src, name);
+  src = rm_from_directory(src, std::string{name});
   auto res2 = write_file(parent, std::vector<u8>(src.begin(), src.end()));
   if (res2.is_err()) {
     return {res2.unwrap_error()};
