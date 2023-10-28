@@ -56,6 +56,14 @@ namespace chfs {
  */
 const u8 RegularFileType = 1;
 const u8 DirectoryType = 2;
+const u8 MetaMtxNum = 4;
+const u8 DataMtxNum = 8;
+
+inline auto meta_lock_num(inode_id_t inodeId) -> u8 {
+  return inodeId % MetaMtxNum;
+}
+
+inline auto data_lock_num(mac_id_t macId) -> u8 { return macId % DataMtxNum; }
 
 using BlockInfo = std::tuple<block_id_t, mac_id_t, version_t>;
 
@@ -248,8 +256,8 @@ class MetadataServer {
    * {You can add anything you want here}
    */
 
-  std::shared_mutex meta_mtx;
-  std::shared_mutex data_mtx;
+  std::shared_mutex meta_mtx[MetaMtxNum];
+  std::shared_mutex data_mtx[DataMtxNum];
 };
 
 }  // namespace chfs
