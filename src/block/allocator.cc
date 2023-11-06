@@ -64,6 +64,9 @@ BlockAllocator::BlockAllocator(std::shared_ptr<BlockManager> block_manager,
     bitmap.set(block_idx);
   }
 
+  // set the log_start_block_id in block manager
+  bm->set_log_id(1 + bitmap_block_id + bitmap_block_cnt + bm->total_blocks());
+
   bm->write_block(cur_block_id, buffer.data());
 }
 
@@ -111,15 +114,14 @@ auto BlockAllocator::allocate() -> ChfsResult<block_id_t> {
     // If we find one free bit inside current bitmap block.
     if (res) {
       // The block id of the allocated block.
-      auto retval = static_cast<block_id_t>(0);
-
+      block_id_t retval = 0;
       bitmap.set(res.value());
       this->bm->write_block(curr_block_id, buffer.data());
       retval = i * bm->block_size() * KBitsPerByte + res.value();
-      return ChfsResult<block_id_t>(retval);
+      return {retval};
     }
   }
-  return ChfsResult<block_id_t>(ErrorType::OUT_OF_RESOURCE);
+  return {ErrorType::OUT_OF_RESOURCE};
 }
 
 // Your implementation
@@ -129,9 +131,9 @@ auto BlockAllocator::deallocate(block_id_t block_id) -> ChfsNullResult {
   }
 
   std::vector<u8> buffer(bm->block_size());
-  const auto payload = this->bm->block_size() * KBitsPerByte;
-  auto bitmap_block_id_ = this->bitmap_block_id + block_id / payload;
-  auto bitmap_block_offset = block_id % payload;
+  const auto num_bits_per_block = this->bm->block_size() * KBitsPerByte;
+  auto bitmap_block_id_ = this->bitmap_block_id + block_id / num_bits_per_block;
+  auto bitmap_block_offset = block_id % num_bits_per_block;
 
   this->bm->read_block(bitmap_block_id_, buffer.data());
   auto bitmap = Bitmap(buffer.data(), bm->block_size());
@@ -139,7 +141,6 @@ auto BlockAllocator::deallocate(block_id_t block_id) -> ChfsNullResult {
   // check if it's been freed
   auto valid = bitmap.check(bitmap_block_offset);
   if (!valid) {
-    std::cout << "has been cleared";
     return ChfsNullResult(ErrorType::INVALID_ARG);
   }
 

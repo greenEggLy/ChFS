@@ -18,8 +18,6 @@
 #include "common/result.h"
 
 namespace chfs {
-// TODO
-
 class BlockIterator;
 
 /**
@@ -39,6 +37,7 @@ class BlockManager {
   bool in_memory;  // whether we use in-memory to emulate the block manager
   bool maybe_failed;
   usize write_fail_cnt;
+  usize log_start_id = 0;
 
  public:
   /**
@@ -74,7 +73,7 @@ class BlockManager {
    * @param block_cnt the number of blocks in the device
    * @param is_log_enabled whether to enable log
    */
-  BlockManager(const std::string &file, usize block_cnt, bool is_log_enabled);
+  BlockManager(std::string file, usize block_cnt, bool is_log_enabled);
 
   virtual ~BlockManager();
 
@@ -140,6 +139,18 @@ class BlockManager {
    * Mark the block manager as may fail state
    */
   auto set_may_fail(bool may_fail) -> void { this->maybe_failed = may_fail; }
+
+  /**
+   * Set the start block id for log
+   * @param log_id
+   */
+  auto set_log_id(usize log_id) -> void { this->log_start_id = log_id; }
+
+  /**
+   * Get log start id
+   * @return
+   */
+  auto get_log_id() const -> usize { return this->log_start_id; }
 };
 
 /**

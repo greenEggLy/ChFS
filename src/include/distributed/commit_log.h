@@ -25,6 +25,7 @@
 #include "filesystem/operations.h"
 
 namespace chfs {
+using LogInfo = std::tuple<txn_id_t, block_id_t, block_id_t>;
 /**
  * `BlockOperation` is an entry indicates an old block state and
  * a new block state. It's used to redo the operation when
@@ -52,7 +53,8 @@ class CommitLog {
                      bool is_checkpoint_enabled);
   ~CommitLog();
   auto append_log(txn_id_t txn_id,
-                  std::vector<std::shared_ptr<BlockOperation>> ops) -> void;
+                  const std::vector<std::shared_ptr<BlockOperation>>& ops)
+      -> void;
   auto commit_log(txn_id_t txn_id) -> void;
   auto checkpoint() -> void;
   auto recover() -> void;
@@ -63,6 +65,15 @@ class CommitLog {
   /**
    * {Append anything if you need}
    */
+ private:
+  std::shared_ptr<BlockAllocator> block_allocator_;
+  usize log_entry_block_cnt;
+  usize bitmap_block_cnt;
+  usize commit_block_id;
+  usize log_entry_block_id;
+  usize bitmap_block_id;
+  usize block_sz;
+  usize commit_num = 0;
 };
 
 }  // namespace chfs

@@ -222,9 +222,11 @@ auto MetadataServer::free_block(inode_id_t id, block_id_t block_id,
         auto client = clients_[machine_id];
         auto res1 = client->call("free_block", block_id);
         if (res1.is_err()) return false;
+
+        data.erase(data.begin() + (long)i,
+                   data.begin() + (long)i + (long)meta_block_size);
+        this->operation_->write_file(id, data);
       }
-      data.erase(data.begin() + i, data.begin() + i + meta_block_size);
-      this->operation_->write_file(id, data);
       return true;
     }
   }
