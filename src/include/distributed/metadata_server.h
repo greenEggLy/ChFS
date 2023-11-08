@@ -255,6 +255,7 @@ class MetadataServer {
   /**
    * {You can add anything you want here}
    */
+  std::atomic<usize> txn_id = 0;
 
   std::shared_mutex meta_mtx[MetaMtxNum];
   std::shared_mutex data_mtx[DataMtxNum];

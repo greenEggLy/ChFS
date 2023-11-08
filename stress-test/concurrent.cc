@@ -114,7 +114,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
         for (u64 j = 0; j < 100; ++j) {
           std::string name =
               "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
-          auto del_res = meta_srv->unlink(dir1_id, name);
+          auto del_res = meta_srv->unlink(dir1_id, name, nullptr);
           ASSERT_TRUE(del_res);
         }
 
@@ -149,7 +149,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
         for (u64 j = 0; j < 100; ++j) {
           std::string name =
               "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
-          auto del_res = meta_srv->unlink(dir2_id, name);
+          auto del_res = meta_srv->unlink(dir2_id, name, nullptr);
           ASSERT_TRUE(del_res);
         }
 

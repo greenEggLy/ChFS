@@ -112,17 +112,26 @@ auto FileOperation::lookup(inode_id_t id, const char *name)
 }
 
 // {Your code here}
-auto FileOperation::mk_helper(inode_id_t id, const char *name, InodeType type)
+auto FileOperation::mk_helper(inode_id_t id, const char *name, InodeType type,
+                              std::vector<std::shared_ptr<BlockOperation>> *ops)
     -> ChfsResult<inode_id_t> {
   auto res = lookup(id, name);
   if (res.is_ok()) {
     return {ErrorType::AlreadyExist};
   }
-  auto res_ = alloc_inode(type);
-  if (res_.is_err()) {
+  // save block changes
+  ChfsResult<inode_id_t> res_(0);
+  std::vector<u8> buffer(this->block_manager_->block_size());
+
+  inode_id_t inode_id = 0;
+  res_ = alloc_inode(type, ops, &inode_id);
+
+  if (res_.is_err() && !ops) {
     return {res_.unwrap_error()};
+  } else if (res_.is_ok()) {
+    inode_id = res_.unwrap();
   }
-  auto inode = res_.unwrap();
+
   // append to parent
   auto content = read_file(id);
   if (content.is_err()) {
@@ -130,16 +139,20 @@ auto FileOperation::mk_helper(inode_id_t id, const char *name, InodeType type)
   }
   auto contents = content.unwrap();
   auto src = std::string(contents.begin(), contents.end());
-  src = append_to_directory(src, name, inode);
-  auto _res = write_file(id, std::vector<u8>(src.begin(), src.end()));
+  src = append_to_directory(src, name, inode_id);
+  auto _res = write_file(id, std::vector<u8>(src.begin(), src.end()), ops);
   if (_res.is_err()) {
     return {_res.unwrap_error()};
   }
-  return {inode};
+  if (res_.is_err()) {
+    return {res_.unwrap_error()};
+  }
+  return {inode_id};
 }
 
 // {Your code here}
-auto FileOperation::unlink(inode_id_t parent, const char *name)
+auto FileOperation::unlink(inode_id_t parent, const char *name,
+                           std::vector<std::shared_ptr<BlockOperation>> *ops)
     -> ChfsNullResult {
   // remove from parent
   auto res = read_file(parent);
@@ -152,13 +165,12 @@ auto FileOperation::unlink(inode_id_t parent, const char *name)
   parse_directory(src, list);
   for (const auto &item : list) {
     if (item.name == name) {
-      //      inode_manager_->free_inode(item.id);
-      remove_file(item.id);
+      remove_file(item.id, ops);
       break;
     }
   }
   src = rm_from_directory(src, std::string{name});
-  auto res2 = write_file(parent, std::vector<u8>(src.begin(), src.end()));
+  auto res2 = write_file(parent, std::vector<u8>(src.begin(), src.end()), ops);
   if (res2.is_err()) {
     return {res2.unwrap_error()};
   }

@@ -47,7 +47,7 @@ TEST(FileSystemTest, WriteLargeFile) {
   std::vector<inode_id_t> id_list;
   for (usize i = 0; i < kFileNum; i++) {
     // for (usize i = 0; i < 1; i++) {
-    auto res = fs.alloc_inode(InodeType::FILE);
+    auto res = fs.alloc_inode(InodeType::FILE, nullptr, nullptr);
     ASSERT_TRUE(res.is_ok());
     id_list.push_back(res.unwrap());
   }
@@ -59,7 +59,7 @@ TEST(FileSystemTest, WriteLargeFile) {
       contents[id] = generate_random_string(rng);
       //                if (id != 38 || i != 8) continue;
 
-      auto res = fs.write_file(id, contents[id]);
+      auto res = fs.write_file(id, contents[id], nullptr);
       ASSERT_TRUE(res.is_ok());
       auto res_ = fs.read_file(id);
       ASSERT_TRUE(res_.is_ok());
@@ -83,7 +83,7 @@ TEST(FileSystemTest, SetAttr) {
   auto bm =
       std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
   auto fs = FileOperation(bm, kTestInodeNum);
-  auto res = fs.alloc_inode(InodeType::FILE);
+  auto res = fs.alloc_inode(InodeType::FILE, nullptr, nullptr);
   ASSERT_TRUE(res.is_ok());
   auto inode = res.unwrap();
 
@@ -92,7 +92,7 @@ TEST(FileSystemTest, SetAttr) {
 
   auto content = std::vector<u8>(KLargeFileMin);
   {
-    auto res = fs.write_file(inode, content);
+    auto res = fs.write_file(inode, content, nullptr);
     ASSERT_TRUE(res.is_ok());
   }
 
@@ -101,7 +101,7 @@ TEST(FileSystemTest, SetAttr) {
 
   content.resize(KLargeFileMax);
   {
-    auto res = fs.write_file(inode, content);
+    auto res = fs.write_file(inode, content, nullptr);
     ASSERT_TRUE(res.is_ok());
   }
 

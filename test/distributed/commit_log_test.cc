@@ -3,6 +3,7 @@
 #include <chrono>
 #include <thread>
 
+#include "common/logger.h"
 #include "distributed/metadata_server.h"
 #include "gtest/gtest.h"
 
@@ -146,6 +147,8 @@ TEST_F(CommitLogTest, CheckCheckpointFunctional) {
   for (int i = 0; i < 100; i++) {
     auto del_res = meta_srv->unlink(1, "dir-" + std::to_string(i));
     EXPECT_EQ(del_res, true);
+    auto dir_content = meta_srv->readdir(1);
+    EXPECT_EQ(dir_content.size(), 99 - i);
   }
 
   std::cerr << "unlink done\n";

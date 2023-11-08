@@ -34,6 +34,7 @@ auto ChfsClient::mknode(FileType type, inode_id_t parent,
                         const std::string &name) -> ChfsResult<inode_id_t> {
   auto res = metadata_server_->call("mknode", (u8)type, parent, name);
   if (res.is_err()) return {res.unwrap_error()};
+  if (res.unwrap()->as<inode_id_t>() == 0) return {ErrorType::INVALID};
   return {res.unwrap()->as<inode_id_t>()};
 }
 
@@ -68,8 +69,14 @@ auto ChfsClient::get_type_attr(inode_id_t id)
   if (res.is_err()) return res.unwrap_error();
   std::pair<InodeType, FileAttr> ret;
   // size, atime, mtime, ctime
-  auto [type, size, atime, mtime, ctime] =
+  auto [size, atime, mtime, ctime, type] =
       res.unwrap()->as<std::tuple<u64, u64, u64, u64, u8>>();
+  //  if (static_cast<InodeType>(type) == InodeType::FILE) {
+  //    auto res2 = metadata_server_->call("get_block_map", id);
+  //    if (res2.is_err()) return res2.unwrap_error();
+  //    size = res2.unwrap()->as<std::vector<BlockInfo>>().size() *
+  //    DiskBlockSize;
+  //  }
   ret.first = static_cast<InodeType>(type);
   ret.second.size = size;
   ret.second.atime = atime;
@@ -87,10 +94,12 @@ auto ChfsClient::read_file(inode_id_t id, usize offset, usize size)
   auto res = metadata_server_->call("get_block_map", id);
   if (res.is_err()) return res.unwrap_error();
   auto block_info = res.unwrap()->as<std::vector<BlockInfo>>();
+  auto file_size = block_info.size() * DiskBlockSize;
   std::vector<u8> content;
   auto block_info_index = offset / DiskBlockSize;
   auto block_info_offset = offset % DiskBlockSize;
-  auto read_size = size;
+  //  auto read_size = size;
+  auto read_size = file_size;
   while (size > 0) {
     auto left_size_in_block = DiskBlockSize - block_info_offset;
     read_size = size > left_size_in_block ? left_size_in_block : size;
@@ -105,6 +114,10 @@ auto ChfsClient::read_file(inode_id_t id, usize offset, usize size)
     block_info_index++;
     block_info_offset = 0;
   }
+  for (int i = 0; i < 30; i++) {
+    std::cerr << content[i];
+  }
+  std::cerr << std::endl;
   return {content};
 }
 
@@ -143,9 +156,10 @@ auto ChfsClient::write_file(inode_id_t id, usize offset, std::vector<u8> data)
     auto [blockId, macId, version] = block_info.at(block_info_index);
     auto res1 = data_servers_[macId]->call(
         "write_data", blockId, block_info_offset, std::move(tmp_data));
+    //    auto res2 = data_servers_[macId]->call()
     if (res1.is_err()) return res1.unwrap_error();
     write_len -= write_end - write_start;
-    write_start += write_end - write_start;
+    write_start = write_end;
     block_info_index++;
     block_info_offset = 0;
   }

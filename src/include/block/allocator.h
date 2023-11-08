@@ -85,7 +85,8 @@ class BlockAllocator {
    *         OUT_OF_RESOURCE if there is no free block.
    *         other error code if there is other error.
    */
-  auto allocate() -> ChfsResult<block_id_t>;
+  auto allocate(std::vector<std::shared_ptr<BlockOperation>>* ops,
+                block_id_t* alloc_block_id) -> ChfsResult<block_id_t>;
 
   /**
    * Deallocate a block.
@@ -94,7 +95,9 @@ class BlockAllocator {
    * @return INVALID_ARG if the block id is freed.
    *         other error code if there is other error.
    */
-  auto deallocate(block_id_t block_id) -> ChfsNullResult;
+  auto deallocate(block_id_t block_id,
+                  std::vector<std::shared_ptr<BlockOperation>>* ops)
+      -> ChfsNullResult;
 };
 
 }  // namespace chfs

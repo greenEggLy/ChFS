@@ -18,6 +18,24 @@
 namespace chfs {
 
 /**
+ * `BlockOperation` is an entry indicates an old block state and
+ * a new block state. It's used to redo the operation when
+ * the system is crashed.
+ */
+// class BlockOperation {
+// public:
+//  explicit BlockOperation(block_id_t block_id, std::vector<u8>
+//  new_block_state)
+//      : block_id_(block_id), new_block_state_(new_block_state) {
+//    CHFS_ASSERT(new_block_state.size() == DiskBlockSize, "invalid block
+//    state");
+//  }
+//
+//  block_id_t block_id_;
+//  std::vector<u8> new_block_state_;
+//};
+
+/**
  * Implement the basic inode filesystem
  */
 class FileOperation {
@@ -62,7 +80,9 @@ class FileOperation {
    * @param type the type of the inode
    * @return the id of the inode
    */
-  auto alloc_inode(InodeType type) -> ChfsResult<inode_id_t>;
+  auto alloc_inode(InodeType type,
+                   std::vector<std::shared_ptr<BlockOperation>> *ops,
+                   inode_id_t *free_inode_id) -> ChfsResult<inode_id_t>;
 
   /**
    * Get the file attribute of the given inode
@@ -93,7 +113,9 @@ class FileOperation {
    * @param id the id of the inode
    * @param content the content to write
    */
-  auto write_file(inode_id_t, const std::vector<u8> &content) -> ChfsNullResult;
+  auto write_file(inode_id_t, const std::vector<u8> &content,
+                  std::vector<std::shared_ptr<BlockOperation>> *ops)
+      -> ChfsNullResult;
 
   /**
    * Write the content to the blocks pointed by the inode
@@ -130,7 +152,9 @@ class FileOperation {
    * @param id the id of the inode
    * @return whether the remove is ok
    */
-  auto remove_file(inode_id_t) -> ChfsNullResult;
+  auto remove_file(inode_id_t,
+                   std::vector<std::shared_ptr<BlockOperation>> *ops)
+      -> ChfsNullResult;
 
   /**
    * Get the free blocks of the filesystem.
@@ -146,10 +170,11 @@ class FileOperation {
   /**
    * Helper function to create directory or file
    *
-   * @param parent the id of the parent
+   * @param id the id of the parent
    * @param name the name of the directory
    */
-  auto mk_helper(inode_id_t parent, const char *name, InodeType type)
+  auto mk_helper(inode_id_t parent, const char *name, InodeType type,
+                 std::vector<std::shared_ptr<BlockOperation>> *ops)
       -> ChfsResult<inode_id_t>;
 
   /**
@@ -159,7 +184,7 @@ class FileOperation {
    * @param name the name of the directory
    */
   auto mkdir(inode_id_t parent, const char *name) -> ChfsResult<inode_id_t> {
-    return mk_helper(parent, name, InodeType::Directory);
+    return mk_helper(parent, name, InodeType::Directory, nullptr);
   }
 
   /**
@@ -169,7 +194,7 @@ class FileOperation {
    * @param name the name of the directory
    */
   auto mkfile(inode_id_t parent, const char *name) -> ChfsResult<inode_id_t> {
-    return mk_helper(parent, name, InodeType::FILE);
+    return mk_helper(parent, name, InodeType::FILE, nullptr);
   }
 
   /**
@@ -186,7 +211,9 @@ class FileOperation {
    * @return  If the file doesn't exist, indicate error ENOENT.
    * @return  ENOTEMPTY if the deleted file is a directory
    */
-  auto unlink(inode_id_t parent, const char *name) -> ChfsNullResult;
+  auto unlink(inode_id_t parent, const char *name,
+              std::vector<std::shared_ptr<BlockOperation>> *ops)
+      -> ChfsNullResult;
 
  private:
   FileOperation(std::shared_ptr<BlockManager> bm,

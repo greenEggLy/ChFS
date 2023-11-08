@@ -18,7 +18,7 @@ TEST(FileSystemTest, CreateAndGetAttr) {
     int random_num = uni(rng);
     if (random_num < 3) {
       // create a directory
-      auto res = fs.alloc_inode(InodeType::Directory);
+      auto res = fs.alloc_inode(InodeType::Directory, nullptr, nullptr);
       ASSERT_TRUE(res.is_ok());
 
       auto type = fs.gettype(res.unwrap());
@@ -26,7 +26,7 @@ TEST(FileSystemTest, CreateAndGetAttr) {
 
       ASSERT_EQ(type.unwrap(), InodeType::Directory);
     } else {
-      auto res = fs.alloc_inode(InodeType::FILE);
+      auto res = fs.alloc_inode(InodeType::FILE, nullptr, nullptr);
       ASSERT_TRUE(res.is_ok());
 
       auto type = fs.gettype(res.unwrap());

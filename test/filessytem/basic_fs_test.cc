@@ -17,7 +17,7 @@ TEST(BasicFileSystemTest, Init) {
 
   // try allocate a block
   {
-    auto res = fs.alloc_inode(InodeType::FILE);
+    auto res = fs.alloc_inode(InodeType::FILE, nullptr, nullptr);
     ASSERT_TRUE(res.is_ok());
     ASSERT_EQ(res.unwrap(), 1);
   }

@@ -17,7 +17,7 @@ RUN apt-get -y update && \
       clang-tidy-14 \
       cmake \
       doxygen \
-      git \
+      git gdb\
       g++-12 \
       pkg-config \
       zlib1g-dev && \

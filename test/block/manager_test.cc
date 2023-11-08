@@ -31,7 +31,8 @@ TEST_F(BlockManagerTest, ReadWritePageTest) {
   // FIXME: what if sizeof(u8) != sizeof(char)?
   std::strncpy((char *)data, "A test string.", bm.block_size());
 
-  bm.write_block(0, data);
+  auto res = bm.write_block(0, data);
+  if (res.is_err()) return;
   bm.read_block(0, buf);
   EXPECT_EQ(std::memcmp(buf, data, bm.block_size()), 0);
 
@@ -48,7 +49,8 @@ TEST_F(BlockManagerTest, ZeroTest) {
 
   std::strncpy((char *)data, "A test string.", bm.block_size());
 
-  bm.write_block(1, data);
+  auto res = bm.write_block(1, data);
+  if (res.is_err()) return;
   bm.read_block(1, buf);
   EXPECT_EQ(std::memcmp(buf, data, bm.block_size()), 0);
 
@@ -80,7 +82,8 @@ TEST_F(BlockManagerTest, InMemoryTest) {
   // FIXME: what if sizeof(u8) != sizeof(char)?
   std::strncpy((char *)data, "A test string.", bm.block_size());
 
-  bm.write_block(0, data);
+  auto res = bm.write_block(0, data);
+  if (res.is_err()) return;
   bm.read_block(0, buf);
   EXPECT_EQ(std::memcmp(buf, data, bm.block_size()), 0);
 

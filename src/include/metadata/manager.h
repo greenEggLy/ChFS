@@ -71,7 +71,9 @@ class InodeManager {
    * @param type: file type
    * @param bid: inode block ID
    */
-  auto allocate_inode(InodeType type, block_id_t bid) -> ChfsResult<inode_id_t>;
+  auto allocate_inode(InodeType type, block_id_t bid,
+                      std::vector<std::shared_ptr<BlockOperation>>* ops,
+                      inode_id_t* free_inode_id) -> ChfsResult<inode_id_t>;
 
   /**
    * Get the number of free inodes
@@ -90,7 +92,9 @@ class InodeManager {
   /**
    * Free the inode entry id
    */
-  auto free_inode(inode_id_t id) -> ChfsNullResult;
+  auto free_inode(inode_id_t id,
+                  std::vector<std::shared_ptr<BlockOperation>>* ops)
+      -> ChfsNullResult;
 
   /**
    * Get the attribute of the inode
@@ -118,7 +122,9 @@ class InodeManager {
    * Set the block ID of the inode
    * @param idx: **physical** inode ID
    */
-  auto set_table(inode_id_t idx, block_id_t bid) -> ChfsNullResult;
+  auto set_table(inode_id_t idx, block_id_t bid,
+                 std::vector<std::shared_ptr<BlockOperation>>* ops)
+      -> ChfsNullResult;
 
  private:
   /**
@@ -135,7 +141,7 @@ class InodeManager {
    * Read the inode to a buffer
    * @param block_id_t: the block id that stores the inode
    */
-  auto read_inode(inode_id_t id, std::vector<u8> &buffer)
+  auto read_inode(inode_id_t id, std::vector<u8>& buffer)
       -> ChfsResult<block_id_t>;
 };
 

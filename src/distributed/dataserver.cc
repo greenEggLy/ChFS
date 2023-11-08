@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "common/logger.h"
 #include "common/util.h"
 
 namespace chfs {
@@ -100,7 +101,7 @@ auto DataServer::write_data(block_id_t block_id, usize offset,
 auto DataServer::alloc_block() -> std::pair<block_id_t, version_t> {
   auto num_per_block = DiskBlockSize / sizeof(version_t);
   std::vector<u8> buffer(DiskBlockSize);
-  auto res = block_allocator_->allocate();
+  auto res = block_allocator_->allocate(nullptr, nullptr);
   if (res.is_err()) {
     return {};
   }
@@ -122,7 +123,7 @@ auto DataServer::alloc_block() -> std::pair<block_id_t, version_t> {
 // {Your code here}
 auto DataServer::free_block(block_id_t block_id) -> bool {
   auto num_per_block = DiskBlockSize / sizeof(version_t);
-  auto res = block_allocator_->deallocate(block_id);
+  auto res = block_allocator_->deallocate(block_id, nullptr);
   if (res.is_err()) {
     return false;
   }

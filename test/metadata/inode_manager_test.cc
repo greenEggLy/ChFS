@@ -1,5 +1,6 @@
 #include <cstring>
 
+#include "common/logger.h"
 #include "common/macros.h"
 #include "gtest/gtest.h"
 #include "metadata/manager.h"
@@ -36,7 +37,7 @@ class InodeManagerTest : public ::testing::Test {
 TEST_F(InodeManagerTest, InitAndTable) {
   // test inode table
   for (inode_id_t i = 1; i < 64; ++i) {
-    inode_manager->set_table(i - 1, i + 73).unwrap();
+    inode_manager->set_table(i - 1, i + 73, nullptr).unwrap();
     ASSERT_EQ(inode_manager->get(i).unwrap(), i + 73);
   }
   test_inode_num = inode_manager->get_max_inode_supported();
@@ -55,14 +56,16 @@ TEST_F(InodeManagerTest, Allocation) {
   block_id_t prev_id = 0;
   // now start allocate an inode
   for (usize i = 0; i < free_inode_cnt; ++i) {
-    auto free_block_res = allocator.allocate();
+    auto free_block_res = allocator.allocate(nullptr, nullptr);
     if (free_block_res.is_err()) {
       ASSERT_EQ(prev_id, test_block_cnt - 1);
       break;
     }
+
     auto free_block = free_block_res.unwrap();
     auto inode_id =
-        inode_manager1.allocate_inode(InodeType::Directory, free_block)
+        inode_manager1
+            .allocate_inode(InodeType::Directory, free_block, nullptr, nullptr)
             .unwrap();
     ASSERT_EQ(inode_id, i + 1);
     prev_id = free_block;

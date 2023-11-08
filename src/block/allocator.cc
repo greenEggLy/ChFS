@@ -1,6 +1,7 @@
 #include "block/allocator.h"
 
 #include "common/bitmap.h"
+#include "common/logger.h"
 
 namespace chfs {
 
@@ -55,8 +56,11 @@ BlockAllocator::BlockAllocator(std::shared_ptr<BlockManager> block_manager,
     auto block_idx = i % total_bits_per_block;
 
     if (block_id != cur_block_id) {
-      bm->write_block(cur_block_id, buffer.data());
-
+      auto res = bm->write_block(cur_block_id, buffer.data());
+      if (res.is_err()) {
+        std::cerr << "allocator failed \n";
+        return;
+      }
       cur_block_id = block_id;
       bitmap.zeroed();
     }
@@ -65,9 +69,12 @@ BlockAllocator::BlockAllocator(std::shared_ptr<BlockManager> block_manager,
   }
 
   // set the log_start_block_id in block manager
-  bm->set_log_id(1 + bitmap_block_id + bitmap_block_cnt + bm->total_blocks());
+  bm->set_log_id(bm->total_blocks());
 
-  bm->write_block(cur_block_id, buffer.data());
+  auto res2 = bm->write_block(cur_block_id, buffer.data());
+  if (res2.is_err()) {
+    return;
+  }
 }
 
 // Fixme: currently we don't consider errors in this implementation
@@ -95,7 +102,9 @@ auto BlockAllocator::free_block_cnt() const -> usize {
 }
 
 // Your implementation
-auto BlockAllocator::allocate() -> ChfsResult<block_id_t> {
+auto BlockAllocator::allocate(std::vector<std::shared_ptr<BlockOperation>>* ops,
+                              block_id_t* alloc_block_id)
+    -> ChfsResult<block_id_t> {
   std::vector<u8> buffer(bm->block_size());
 
   for (uint i = 0; i < this->bitmap_block_cnt; i++) {
@@ -114,18 +123,28 @@ auto BlockAllocator::allocate() -> ChfsResult<block_id_t> {
     // If we find one free bit inside current bitmap block.
     if (res) {
       // The block id of the allocated block.
-      block_id_t retval = 0;
+      block_id_t retval_ = 0;
       bitmap.set(res.value());
-      this->bm->write_block(curr_block_id, buffer.data());
-      retval = i * bm->block_size() * KBitsPerByte + res.value();
-      return {retval};
+      if (ops) {
+        ops->emplace_back(
+            std::make_shared<BlockOperation>(curr_block_id, buffer));
+      }
+      auto res2 = this->bm->write_block(curr_block_id, buffer.data());
+      retval_ = i * bm->block_size() * KBitsPerByte + res.value();
+      if (alloc_block_id) *alloc_block_id = retval_;
+      if (res2.is_err()) {
+        return res2.unwrap_error();
+      }
+      return {retval_};
     }
   }
   return {ErrorType::OUT_OF_RESOURCE};
 }
 
 // Your implementation
-auto BlockAllocator::deallocate(block_id_t block_id) -> ChfsNullResult {
+auto BlockAllocator::deallocate(
+    block_id_t block_id, std::vector<std::shared_ptr<BlockOperation>>* ops)
+    -> ChfsNullResult {
   if (block_id >= this->bm->total_blocks()) {
     return ChfsNullResult(ErrorType::INVALID_ARG);
   }
@@ -146,7 +165,12 @@ auto BlockAllocator::deallocate(block_id_t block_id) -> ChfsNullResult {
 
   // clear the bit and flush
   bitmap.clear(bitmap_block_offset);
-  bm->write_block(bitmap_block_id_, buffer.data());
+  auto res2 = bm->write_block(bitmap_block_id_, buffer.data());
+  if (ops) {
+    ops->emplace_back(
+        std::make_shared<BlockOperation>(bitmap_block_id_, buffer));
+  }
+  if (res2.is_err()) return res2.unwrap_error();
 
   return KNullOk;
 }

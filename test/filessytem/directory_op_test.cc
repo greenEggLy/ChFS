@@ -59,7 +59,7 @@ TEST(FileSystemTest, DirectOperationAdd) {
       std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
   auto fs = FileOperation(bm, kTestInodeNum);
 
-  auto res = fs.alloc_inode(InodeType::Directory);
+  auto res = fs.alloc_inode(InodeType::Directory, nullptr, nullptr);
   if (res.is_err()) {
     std::cerr << "Cannot allocate inode for root directory. " << std::endl;
     exit(1);
@@ -79,7 +79,7 @@ TEST(FileSystemTest, mkdir) {
       std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
   auto fs = FileOperation(bm, kTestInodeNum);
 
-  auto res = fs.alloc_inode(InodeType::Directory);
+  auto res = fs.alloc_inode(InodeType::Directory, nullptr, nullptr);
   if (res.is_err()) {
     std::cerr << "Cannot allocate inode for root directory. " << std::endl;
     exit(1);

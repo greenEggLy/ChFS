@@ -1,31 +1,40 @@
 #include <ctime>
 
-#include "common/logger.h"
 #include "filesystem/operations.h"
 
 namespace chfs {
 
 // {Your code here}
-auto FileOperation::alloc_inode(InodeType type) -> ChfsResult<inode_id_t> {
-  inode_id_t inode_id = static_cast<inode_id_t>(0);
-  auto inode_res = ChfsResult<inode_id_t>(inode_id);
+auto FileOperation::alloc_inode(
+    InodeType type, std::vector<std::shared_ptr<BlockOperation>> *ops,
+    inode_id_t *free_inode_id) -> ChfsResult<inode_id_t> {
+  // use alloc a block
+  block_id_t free_block = 0;
+  auto block_id_res = this->block_allocator_->allocate(ops, &free_block);
+  if (block_id_res.is_err() && !ops) {
+    return block_id_res.unwrap_error();
+  } else if (block_id_res.is_ok()) {
+    free_block = block_id_res.unwrap();
+  }
 
-  // use manager to alloc
-  auto block_id_res = this->block_allocator_->allocate();
+  // alloc an inode
+  inode_id_t inode_id = 0;
+  auto inode_id_res =
+      inode_manager_->allocate_inode(type, free_block, ops, &inode_id);
+  if (inode_id_res.is_err() && !ops) {
+    return {inode_id_res.unwrap_error()};
+  } else if (inode_id_res.is_ok()) {
+    inode_id = inode_id_res.unwrap();
+  }
+
+  if (free_inode_id) *free_inode_id = inode_id;
   if (block_id_res.is_err()) {
-    inode_res = ChfsResult<inode_id_t>(block_id_res.unwrap_error());
-    return inode_res;
+    return {block_id_res.unwrap_error()};
   }
-  auto free_block = block_id_res.unwrap();
-  auto inode_id_res = inode_manager_->allocate_inode(type, free_block);
   if (inode_id_res.is_err()) {
-    inode_res = ChfsResult<inode_id_t>(inode_id_res.unwrap_error());
-    return inode_res;
+    return {inode_id_res.unwrap_error()};
   }
-
-  inode_id = inode_id_res.unwrap();
-  inode_res = ChfsResult<inode_id_t>(inode_id);
-  return inode_res;
+  return {inode_id};
 }
 
 auto FileOperation::getattr(inode_id_t id) -> ChfsResult<FileAttr> {
@@ -58,7 +67,7 @@ auto FileOperation::write_file_w_off(inode_id_t id, const char *data, u64 sz,
   }
   memcpy(content.data() + offset, data, sz);
 
-  auto write_res = this->write_file(id, content);
+  auto write_res = this->write_file(id, content, nullptr);
   if (write_res.is_err()) {
     return ChfsResult<u64>(write_res.unwrap_error());
   }
@@ -66,9 +75,11 @@ auto FileOperation::write_file_w_off(inode_id_t id, const char *data, u64 sz,
 }
 
 // {Your code here}
-auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
-    -> ChfsNullResult {
+auto FileOperation::write_file(
+    inode_id_t id, const std::vector<u8> &content,
+    std::vector<std::shared_ptr<BlockOperation>> *ops) -> ChfsNullResult {
   auto error_code = ErrorType::DONE;
+  bool has_error = false;
   const auto block_size = this->block_manager_->block_size();
   usize old_block_num = 0;
   usize new_block_num = 0;
@@ -108,7 +119,7 @@ auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
     for (usize idx = old_block_num; idx < new_block_num; ++idx) {
       if (inode_p->is_direct_block(idx)) {
         // direct block
-        auto block_id_res = this->block_allocator_->allocate();
+        auto block_id_res = this->block_allocator_->allocate(ops, nullptr);
         if (block_id_res.is_err()) {
           error_code = block_id_res.unwrap_error();
           goto err_ret;
@@ -132,7 +143,8 @@ auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
         }
         auto indirect_inode = reinterpret_cast<Inode *>(indirect_block.data());
         // allocate a new block for storing info
-        auto indirect_block_id_res = this->block_allocator_->allocate();
+        auto indirect_block_id_res =
+            this->block_allocator_->allocate(ops, nullptr);
         if (indirect_block_id_res.is_err()) {
           error_code = indirect_block_id_res.unwrap_error();
           goto err_ret;
@@ -145,9 +157,10 @@ auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
   } else {
     // check the free inode number
     // We need to free the extra blocks.
-    for (usize idx = new_block_num; idx < old_block_num; ++idx) {
+    for (block_id_t idx = new_block_num; idx < old_block_num; ++idx) {
       if (inode_p->is_direct_block(idx)) {
-        auto res = this->block_allocator_->deallocate(inode_p->blocks[idx]);
+        auto res =
+            this->block_allocator_->deallocate(inode_p->blocks[idx], ops);
         if (res.is_err()) {
           error_code = res.unwrap_error();
           goto err_ret;
@@ -169,7 +182,7 @@ auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
         }
         // deallocate the block
         auto res = this->block_allocator_->deallocate(
-            indirect_inode_->blocks[idx - inlined_blocks_num]);
+            indirect_inode_->blocks[idx - inlined_blocks_num], ops);
         if (res.is_err()) {
           error_code = res.unwrap_error();
           goto err_ret;
@@ -182,8 +195,8 @@ auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
     if (old_block_num > inlined_blocks_num &&
         new_block_num <= inlined_blocks_num) {
       // deallocate the indirect block
-      auto res =
-          this->block_allocator_->deallocate(inode_p->get_indirect_block_id());
+      auto res = this->block_allocator_->deallocate(
+          inode_p->get_indirect_block_id(), ops);
       if (res.is_err()) {
         error_code = res.unwrap_error();
         goto err_ret;
@@ -240,6 +253,11 @@ auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
         error_code = write_res.unwrap_error();
         goto err_ret;
       }
+      std::vector<u8> b_buffer(block_size);
+      block_manager_->read_block(w_block_id, b_buffer.data());
+      if (ops)
+        ops->emplace_back(
+            std::make_shared<BlockOperation>(w_block_id, b_buffer));
       write_sz += sz;
       block_idx += 1;
     }
@@ -251,24 +269,35 @@ auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
 
     auto write_res =
         this->block_manager_->write_block(inode_res.unwrap(), inode.data());
+    if (ops)
+      ops->emplace_back(
+          std::make_shared<BlockOperation>(inode_res.unwrap(), inode));
     if (write_res.is_err()) {
       error_code = write_res.unwrap_error();
-      goto err_ret;
+      if (!ops)
+        goto err_ret;
+      else {
+        has_error = true;
+      }
     }
     if (!indirect_block.empty()) {
-      write_res =
-          inode_p->write_indirect_block(this->block_manager_, indirect_block);
+      write_res = inode_p->write_indirect_block(this->block_manager_,
+                                                indirect_block, ops);
       if (write_res.is_err()) {
         error_code = write_res.unwrap_error();
-        goto err_ret;
+        if (!ops) {
+          goto err_ret;
+        } else {
+          has_error = true;
+        }
       }
     }
   }
+  if (has_error) goto err_ret;
 
   return KNullOk;
 
 err_ret:
-  // std::cerr << "write file return error: " << (int)error_code << std::endl;
   return ChfsNullResult(error_code);
 }
 
@@ -378,7 +407,7 @@ auto FileOperation::resize(inode_id_t id, u64 sz) -> ChfsResult<FileAttr> {
   if (content.size() != sz) {
     content.resize(sz);
 
-    auto write_res = this->write_file(id, content);
+    auto write_res = this->write_file(id, content, nullptr);
     if (write_res.is_err()) {
       return ChfsResult<FileAttr>(write_res.unwrap_error());
     }

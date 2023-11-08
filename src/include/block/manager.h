@@ -18,6 +18,23 @@
 #include "common/result.h"
 
 namespace chfs {
+
+/**
+ * `BlockOperation` is an entry indicates an old block state and
+ * a new block state. It's used to redo the operation when
+ * the system is crashed.
+ */
+class BlockOperation {
+ public:
+  explicit BlockOperation(block_id_t block_id, std::vector<u8> new_block_state)
+      : block_id_(block_id), new_block_state_(new_block_state) {
+    CHFS_ASSERT(new_block_state.size() == DiskBlockSize, "invalid block state");
+  }
+
+  block_id_t block_id_;
+  std::vector<u8> new_block_state_;
+};
+
 class BlockIterator;
 
 /**
@@ -73,7 +90,7 @@ class BlockManager {
    * @param block_cnt the number of blocks in the device
    * @param is_log_enabled whether to enable log
    */
-  BlockManager(std::string file, usize block_cnt, bool is_log_enabled);
+  BlockManager(const std::string &file, usize block_cnt, bool is_log_enabled);
 
   virtual ~BlockManager();
 

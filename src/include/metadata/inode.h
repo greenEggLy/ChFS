@@ -169,7 +169,9 @@ class Inode {
    * @param bm the block manager
    */
   auto write_indirect_block(std::shared_ptr<BlockManager> &bm,
-                            std::vector<u8> &buffer) -> ChfsNullResult;
+                            std::vector<u8> &buffer,
+                            std::vector<std::shared_ptr<BlockOperation>> *ops)
+      -> ChfsNullResult;
 
   /**
    * Set the direct block ID given an index
@@ -203,7 +205,7 @@ class Inode {
       -> ChfsResult<block_id_t> {
     if (this->blocks[this->nblocks - 1] == KInvalidBlockID) {
       // aha, we need to allocate one
-      auto bid = allocator->allocate();
+      auto bid = allocator->allocate(nullptr, nullptr);
       if (bid.is_err()) {
         return ChfsResult<block_id_t>(bid.unwrap_error());
       }

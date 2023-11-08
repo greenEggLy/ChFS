@@ -257,12 +257,14 @@ void chfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
 
   auto attr_res = fs->get_type_attr(e.ino);
   if (attr_res.is_err()) {
+    std::cerr << "get type attr error" << std::endl;
     fuse_reply_err(req, -1);
     return;
   }
 
   auto type_attr = attr_res.unwrap();
   auto attr = std::get<1>(type_attr);
+  std::cerr << "attr's size " << attr.size << std::endl;
   auto st = getattr_helper(std::get<0>(type_attr), attr);
   memcpy(&e.attr, &st, sizeof(struct stat));
   fuse_reply_entry(req, &e);
@@ -271,7 +273,7 @@ void chfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
 /** Remove a file */
 void chfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name) {
   FileOperation *fs = reinterpret_cast<FileOperation *>(fuse_req_userdata(req));
-  auto res = fs->unlink(parent, name);
+  auto res = fs->unlink(parent, name, nullptr);
   if (res.is_err()) {
     switch (res.unwrap_error()) {
       case ErrorType::NotExist:
@@ -553,7 +555,7 @@ auto bootstrap_fuse(int argc, char **argv) -> int {
   auto fs = new FileOperation(bm, KMaxInodeNum);
   {
     // pre-initialize
-    auto res = fs->alloc_inode(InodeType::Directory);
+    auto res = fs->alloc_inode(InodeType::Directory, nullptr, nullptr);
     if (res.is_err()) {
       std::cerr << "Cannot allocate inode for root directory. " << std::endl;
       exit(1);

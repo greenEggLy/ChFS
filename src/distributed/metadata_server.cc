@@ -67,9 +67,9 @@ inline auto MetadataServer::init_fs(const std::string &data_path) {
      * If the filesystem on metadata server is not initialized, create
      * a root directory.
      */
-    auto init_res = operation_->alloc_inode(InodeType::Directory);
+    auto init_res =
+        operation_->alloc_inode(InodeType::Directory, nullptr, nullptr);
     if (init_res.is_err()) {
-      std::cerr << "Cannot allocate inode for root directory." << std::endl;
       exit(1);
     }
 
@@ -126,13 +126,28 @@ MetadataServer::MetadataServer(std::string const &address, u16 port,
 // {Your code here}
 auto MetadataServer::mknode(u8 type, inode_id_t parent, const std::string &name)
     -> inode_id_t {
+  ChfsResult<inode_id_t> res(0);
   for (auto &item : meta_mtx) {
     item.lock();
   }
-  auto res =
-      this->operation_->mk_helper(parent, name.data(), (InodeType)(type));
-  for (auto &item : meta_mtx) {
-    item.unlock();
+  if (is_checkpoint_enabled_) {
+    commit_log->checkpoint();
+  }
+  std::vector<std::shared_ptr<BlockOperation>> ops;
+  if (is_log_enabled_) {
+    res = this->operation_->mk_helper(parent, name.data(), (InodeType)(type),
+                                      &ops);
+  } else {
+    res = this->operation_->mk_helper(parent, name.data(), (InodeType(type)),
+                                      nullptr);
+  }
+  for (int i = MetaMtxNum - 1; i >= 0; i--) {
+    meta_mtx[i].unlock();
+  }
+  if (is_log_enabled_) {
+    auto local_txn_id = ++txn_id;
+    commit_log->append_log(local_txn_id, ops);
+    commit_log->commit_log(local_txn_id);
   }
   if (res.is_err()) return 0;
   return res.unwrap();
@@ -144,9 +159,19 @@ auto MetadataServer::unlink(inode_id_t parent, const std::string &name)
   for (auto &item : meta_mtx) {
     item.lock();
   }
-  auto res = this->operation_->unlink(parent, name.data());
-  for (auto &item : meta_mtx) {
-    item.unlock();
+  if (is_checkpoint_enabled_) {
+    commit_log->checkpoint();
+  }
+  std::vector<std::shared_ptr<BlockOperation>> ops;
+  auto *param = is_log_enabled_ ? &ops : nullptr;
+  auto res = this->operation_->unlink(parent, name.data(), param);
+  for (int i = MetaMtxNum - 1; i >= 0; i--) {
+    meta_mtx[i].unlock();
+  }
+  if (is_log_enabled_) {
+    auto local_txn_id = ++txn_id;
+    commit_log->append_log(local_txn_id, ops);
+    commit_log->commit_log(local_txn_id);
   }
   if (res.is_err()) return false;
   return true;
@@ -199,7 +224,7 @@ auto MetadataServer::allocate_block(inode_id_t id) -> BlockInfo {
   *((BlockInfo *)content.data()) =
       std::make_tuple(block_id, machine_id, version);
   data.insert(data.end(), content.begin(), content.end());
-  auto res2 = operation_->write_file(id, data);
+  auto res2 = operation_->write_file(id, data, nullptr);
   if (res2.is_err()) return {};
   return {block_id, machine_id, version};
 }
@@ -207,6 +232,14 @@ auto MetadataServer::allocate_block(inode_id_t id) -> BlockInfo {
 // {Your code here}
 auto MetadataServer::free_block(inode_id_t id, block_id_t block_id,
                                 mac_id_t machine_id) -> bool {
+  {
+    std::lock_guard<std::shared_mutex> lockGuard(
+        data_mtx[data_lock_num(machine_id)]);
+    auto client = clients_[machine_id];
+    auto res1 = client->call("free_block", block_id);
+    if (res1.is_err()) return false;
+  }
+
   std::lock_guard<std::shared_mutex> lockGuard(meta_mtx[meta_lock_num(id)]);
   auto res = this->operation_->read_file(id);
   if (res.is_err()) return false;
@@ -214,19 +247,11 @@ auto MetadataServer::free_block(inode_id_t id, block_id_t block_id,
   auto size = data.size();
   auto meta_block_size = sizeof(BlockInfo);
   for (unsigned long i = 0; i < size; i += meta_block_size) {
-    auto tuple = *(BlockInfo *)(data.data() + i);
-    if (std::get<0>(tuple) == block_id && std::get<1>(tuple) == machine_id) {
-      {
-        std::lock_guard<std::shared_mutex> lockGuard1(
-            data_mtx[data_lock_num(machine_id)]);
-        auto client = clients_[machine_id];
-        auto res1 = client->call("free_block", block_id);
-        if (res1.is_err()) return false;
-
-        data.erase(data.begin() + (long)i,
-                   data.begin() + (long)i + (long)meta_block_size);
-        this->operation_->write_file(id, data);
-      }
+    auto tuple = (BlockInfo *)(data.data() + i);
+    if (std::get<0>(*tuple) == block_id && std::get<1>(*tuple) == machine_id) {
+      data.erase(data.begin() + (long)i,
+                 data.begin() + (long)i + (long)meta_block_size);
+      this->operation_->write_file(id, data, nullptr);
       return true;
     }
   }
@@ -258,6 +283,10 @@ auto MetadataServer::get_type_attr(inode_id_t id)
   if (res.is_err()) return {};
   auto type = (u8)res.unwrap().first;
   auto attribute = res.unwrap().second;
+  if (static_cast<InodeType>(type) == InodeType::FILE) {
+    auto vec = get_block_map(id);
+    attribute.size = vec.size() * DiskBlockSize;
+  }
   return {attribute.size, attribute.atime, attribute.mtime, attribute.ctime,
           type};
 }

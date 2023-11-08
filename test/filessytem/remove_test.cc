@@ -22,7 +22,7 @@ TEST(FileSystemTest, Remove) {
     int random_num = uni(rng);
     if (random_num < 3) {
       // create a directory
-      auto res = fs.alloc_inode(InodeType::Directory);
+      auto res = fs.alloc_inode(InodeType::Directory, nullptr, nullptr);
       ASSERT_TRUE(res.is_ok());
 
       auto type = fs.gettype(res.unwrap());
@@ -32,7 +32,7 @@ TEST(FileSystemTest, Remove) {
 
       id_list.push_back(res.unwrap());
     } else {
-      auto res = fs.alloc_inode(InodeType::FILE);
+      auto res = fs.alloc_inode(InodeType::FILE, nullptr, nullptr);
       ASSERT_TRUE(res.is_ok());
 
       auto type = fs.gettype(res.unwrap());
@@ -48,7 +48,7 @@ TEST(FileSystemTest, Remove) {
 
   // The real test remove here
   for (auto id : id_list) {
-    auto res = fs.remove_file(id);
+    auto res = fs.remove_file(id, nullptr);
     ASSERT_TRUE(res.is_ok());
 
     // After remove, the getattr should never be ok
