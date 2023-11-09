@@ -57,7 +57,7 @@ namespace chfs {
 const u8 RegularFileType = 1;
 const u8 DirectoryType = 2;
 const u8 MetaMtxNum = 4;
-const u8 DataMtxNum = 8;
+const u8 DataMtxNum = 3;
 
 inline auto meta_lock_num(inode_id_t inodeId) -> u8 {
   return inodeId % MetaMtxNum;

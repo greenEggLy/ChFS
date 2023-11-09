@@ -36,7 +36,7 @@ CommitLog::CommitLog(std::shared_ptr<BlockManager> bm,
   this->logger_block_id_ = bitmap_block_id_ + bitmap_block_cnt_;
 }
 
-CommitLog::~CommitLog() {}
+CommitLog::~CommitLog() = default;
 
 // {Your code here}
 auto CommitLog::get_log_entry_num() const -> usize { return commit_num_; }
@@ -136,16 +136,16 @@ auto CommitLog::recover() -> void {
   std::vector<u8> content_buffer(block_sz);
   std::vector<u8> zero_buffer(block_sz);
   bm_->read_block(this->commit_block_id_, commit_buffer.data());
-  txn_id_t inblock_idx = 0;
+  txn_id_t in_block_idx = 0;
 
-  for (int i = 0; i < commit_num_; ++i, inblock_idx++) {
+  for (int i = 0; i < commit_num_; ++i, in_block_idx++) {
     // for each commit
     if (i == block_sz / sizeof(txn_id_t)) {
       bm_->read_block(this->commit_block_id_ + 1, commit_buffer.data());
-      inblock_idx = 0;
+      in_block_idx = 0;
     }
     txn_id_t trans_id =
-        *(txn_id_t *)(commit_buffer.data() + inblock_idx * sizeof(txn_id_t));
+        *(txn_id_t *)(commit_buffer.data() + in_block_idx * sizeof(txn_id_t));
 
     for (int j = 0; j < this->entry_block_cnt_; ++j) {
       // traverse the logs
@@ -187,4 +187,4 @@ auto CommitLog::recover() -> void {
   }
   commit_num_ = 0;
 }
-};  // namespace chfs
+}  // namespace chfs
