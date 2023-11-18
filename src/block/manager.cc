@@ -88,7 +88,6 @@ BlockManager::BlockManager(const std::string &file, usize block_cnt,
     : file_name_(file), block_cnt(block_cnt), in_memory(false) {
   this->write_fail_cnt = 0;
   this->maybe_failed = false;
-  // TODO: Implement this function.
   this->fd = open(file.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   CHFS_ASSERT(this->fd != -1, "Failed to open the block manager file");
 

@@ -119,12 +119,13 @@ auto FileOperation::write_file(
     for (usize idx = old_block_num; idx < new_block_num; ++idx) {
       if (inode_p->is_direct_block(idx)) {
         // direct block
-        auto block_id_res = this->block_allocator_->allocate(ops, nullptr);
-        if (block_id_res.is_err()) {
+        block_id_t free_block = 0;
+        auto block_id_res = this->block_allocator_->allocate(ops, &free_block);
+        if (block_id_res.is_err() && !ops) {
           error_code = block_id_res.unwrap_error();
           goto err_ret;
         }
-        auto free_block = block_id_res.unwrap();
+        //        free_block = block_id_res.unwrap();
         inode_p->set_block_direct(idx, free_block);
       } else {
         // indirect block
