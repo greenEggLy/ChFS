@@ -1,12 +1,15 @@
 #include "distributed/dataserver.h"
-#include "librpc/client.h"
-#include "gtest/gtest.h"
+
 #include <fstream>
+
+#include "common/logger.h"
+#include "gtest/gtest.h"
+#include "librpc/client.h"
 
 namespace chfs {
 
 class DataServerTest : public ::testing::Test {
-protected:
+ protected:
   const std::string data_path = "/tmp/test_file";
   std::shared_ptr<DataServer> data_srv;
   const u16 port = 8080;
@@ -38,7 +41,7 @@ TEST_F(DataServerTest, AllocateAndDelete) {
   EXPECT_EQ(res.is_err(), false);
   auto [block_id, version] =
       res.unwrap()->as<std::pair<block_id_t, version_t>>();
-  EXPECT_GT(block_id, 0); // The first one should be version map
+  EXPECT_GT(block_id, 0);  // The first one should be version map
   EXPECT_EQ(version, 1);
 
   // Then delete this one and reallocate
@@ -87,4 +90,4 @@ TEST_F(DataServerTest, ReadAndWrite) {
   EXPECT_EQ(buffer, input);
 }
 
-} // namespace chfs
+}  // namespace chfs

@@ -1,12 +1,14 @@
 #include "block/manager.h"
+
+#include <cstring>
+
 #include "common/macros.h"
 #include "gtest/gtest.h"
-#include <cstring>
 
 namespace chfs {
 
 class BlockManagerTest : public ::testing::Test {
-protected:
+ protected:
   // This function is called before every test.
   void SetUp() override {
     // remove("test.db");
@@ -29,7 +31,8 @@ TEST_F(BlockManagerTest, ReadWritePageTest) {
   // FIXME: what if sizeof(u8) != sizeof(char)?
   std::strncpy((char *)data, "A test string.", bm.block_size());
 
-  bm.write_block(0, data);
+  auto res = bm.write_block(0, data);
+  if (res.is_err()) return;
   bm.read_block(0, buf);
   EXPECT_EQ(std::memcmp(buf, data, bm.block_size()), 0);
 
@@ -46,7 +49,8 @@ TEST_F(BlockManagerTest, ZeroTest) {
 
   std::strncpy((char *)data, "A test string.", bm.block_size());
 
-  bm.write_block(1, data);
+  auto res = bm.write_block(1, data);
+  if (res.is_err()) return;
   bm.read_block(1, buf);
   EXPECT_EQ(std::memcmp(buf, data, bm.block_size()), 0);
 
@@ -78,7 +82,8 @@ TEST_F(BlockManagerTest, InMemoryTest) {
   // FIXME: what if sizeof(u8) != sizeof(char)?
   std::strncpy((char *)data, "A test string.", bm.block_size());
 
-  bm.write_block(0, data);
+  auto res = bm.write_block(0, data);
+  if (res.is_err()) return;
   bm.read_block(0, buf);
   EXPECT_EQ(std::memcmp(buf, data, bm.block_size()), 0);
 
@@ -109,4 +114,4 @@ TEST_F(BlockManagerTest, Iterator) {
   }
 }
 
-} // namespace chfs
+}  // namespace chfs

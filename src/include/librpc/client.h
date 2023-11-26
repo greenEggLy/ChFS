@@ -153,7 +153,7 @@ public:
    * Set client reliability
    */
   auto set_reliable(bool r) -> bool;
-  
+
 private:
   std::unique_ptr<rpc::client> client;
   bool reliable;

@@ -1,7 +1,7 @@
-#include "gtest/gtest.h"
-
 #include "common/bitmap.h"
+
 #include "common/macros.h"
+#include "gtest/gtest.h"
 
 namespace chfs {
 
@@ -60,4 +60,4 @@ TEST(BasicTest, BitmapFree) {
   delete[] data;
 }
 
-} // namespace chfs
+}  // namespace chfs

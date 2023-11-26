@@ -1,11 +1,12 @@
 #include "librpc/server.h"
+
 #include "gtest/gtest.h"
 
 namespace chfs {
 
 class LibRpcServerTest : public ::testing::Test {
-protected:
-  const u16 port = 8080; // Default listening port
+ protected:
+  const u16 port = 8080;  // Default listening port
   std::shared_ptr<RpcServer> srv;
   // This function is called before every test.
   void SetUp() override { srv = std::make_shared<RpcServer>(port); }
@@ -28,4 +29,4 @@ TEST_F(LibRpcServerTest, Bind) {
   EXPECT_EQ(names.size(), 2);
 }
 
-} // namespace chfs
+}  // namespace chfs

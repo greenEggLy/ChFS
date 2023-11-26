@@ -11,13 +11,14 @@
 
 #pragma once
 
-#include "common/config.h"
-#include "common/macros.h"
-#include "rpc/msgpack.hpp"
 #include <cstdlib>
 #include <fstream>
 #include <map>
 #include <random>
+
+#include "common/config.h"
+#include "common/macros.h"
+#include "rpc/msgpack.hpp"
 
 namespace chfs {
 
@@ -25,7 +26,7 @@ namespace chfs {
  * A simple random number generator
  */
 class RandomNumberGenerator {
-public:
+ public:
   RandomNumberGenerator() {
     std::random_device rd;
     seed.seed(rd());
@@ -36,7 +37,7 @@ public:
     return dist(seed);
   }
 
-private:
+ private:
   std::mt19937_64 seed;
 };
 
@@ -96,4 +97,4 @@ inline auto dispatch_request(usize offset, usize size)
                          first_block_offset, last_block_size);
 }
 
-} // namespace chfs
+}  // namespace chfs

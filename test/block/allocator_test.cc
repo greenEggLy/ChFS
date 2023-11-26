@@ -1,11 +1,12 @@
 #include "block/allocator.h"
+
 #include "common/macros.h"
 #include "gtest/gtest.h"
 
 namespace chfs {
 
 class BlockAllocatorTest : public ::testing::Test {
-protected:
+ protected:
   // This function is called before every test.
   void SetUp() override {}
 
@@ -52,7 +53,7 @@ TEST_F(BlockAllocatorTest, Allocation) {
   // test the allocation
   auto free_block_cnt = allocator.free_block_cnt();
   for (usize i = 0; i < free_block_cnt; i++) {
-    auto block = allocator.allocate();
+    auto block = allocator.allocate(nullptr, nullptr);
     EXPECT_TRUE(block.is_ok());
     auto free_block_id = block.unwrap();
     EXPECT_EQ(free_block_id, i + bitmap_block_cnt);
@@ -62,8 +63,8 @@ TEST_F(BlockAllocatorTest, Allocation) {
 
   // now test the free
   for (usize i = 0; i < free_block_cnt; i++) {
-    EXPECT_TRUE(allocator.deallocate(i + bitmap_block_cnt).is_ok());
+    EXPECT_TRUE(allocator.deallocate(i + bitmap_block_cnt, nullptr).is_ok());
   }
 }
 
-} // namespace chfs
+}  // namespace chfs

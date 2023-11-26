@@ -1,6 +1,6 @@
-#include <string.h>
-
 #include "metadata/superblock.h"
+
+#include <string.h>
 
 namespace chfs {
 
@@ -26,4 +26,4 @@ auto SuperBlock::create_from_existing(std::shared_ptr<BlockManager> bm,
   return ChfsResult<std::shared_ptr<SuperBlock>>(res);
 }
 
-} // namespace chfs
+}  // namespace chfs

@@ -1,13 +1,16 @@
 #include "distributed/commit_log.h"
-#include "distributed/metadata_server.h"
-#include "gtest/gtest.h"
+
 #include <chrono>
 #include <thread>
+
+#include "common/logger.h"
+#include "distributed/metadata_server.h"
+#include "gtest/gtest.h"
 
 namespace chfs {
 
 class CommitLogTest : public ::testing::Test {
-protected:
+ protected:
   const u16 meta_port = 8080;
   const std::string inode_path = "/tmp/inode_file";
 
@@ -144,6 +147,8 @@ TEST_F(CommitLogTest, CheckCheckpointFunctional) {
   for (int i = 0; i < 100; i++) {
     auto del_res = meta_srv->unlink(1, "dir-" + std::to_string(i));
     EXPECT_EQ(del_res, true);
+    auto dir_content = meta_srv->readdir(1);
+    EXPECT_EQ(dir_content.size(), 99 - i);
   }
 
   std::cerr << "unlink done\n";
@@ -162,4 +167,4 @@ TEST_F(CommitLogTest, CheckCheckpointFunctional) {
   std::remove(inode_path.c_str());
 }
 
-} // namespace chfs
+}  // namespace chfs

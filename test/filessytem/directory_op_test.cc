@@ -1,7 +1,8 @@
+#include "filesystem/directory_op.h"
+
 #include <random>
 
 #include "./common.h"
-#include "filesystem/directory_op.h"
 #include "gtest/gtest.h"
 
 namespace chfs {
@@ -27,6 +28,8 @@ TEST(FileSystemBase, Utilities) {
   parse_directory(input, list);
   ASSERT_EQ(list.size(), 1 + 100);
 }
+
+TEST(FileSystemBase, Unlink) {}
 
 TEST(FileSystemBase, UtilitiesRemove) {
   std::vector<u8> content;
@@ -56,7 +59,7 @@ TEST(FileSystemTest, DirectOperationAdd) {
       std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
   auto fs = FileOperation(bm, kTestInodeNum);
 
-  auto res = fs.alloc_inode(InodeType::Directory);
+  auto res = fs.alloc_inode(InodeType::Directory, nullptr, nullptr);
   if (res.is_err()) {
     std::cerr << "Cannot allocate inode for root directory. " << std::endl;
     exit(1);
@@ -76,7 +79,7 @@ TEST(FileSystemTest, mkdir) {
       std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
   auto fs = FileOperation(bm, kTestInodeNum);
 
-  auto res = fs.alloc_inode(InodeType::Directory);
+  auto res = fs.alloc_inode(InodeType::Directory, nullptr, nullptr);
   if (res.is_err()) {
     std::cerr << "Cannot allocate inode for root directory. " << std::endl;
     exit(1);
@@ -95,4 +98,4 @@ TEST(FileSystemTest, mkdir) {
   ASSERT_EQ(list.size(), 100);
 }
 
-} // namespace chfs
+}  // namespace chfs

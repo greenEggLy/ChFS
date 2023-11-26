@@ -5,6 +5,8 @@ CMD bash
 # Install Ubuntu packages.
 # Please add packages in alphabetical order.
 ARG DEBIAN_FRONTEND=noninteractive
+RUN  sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
+RUN  apt-get clean
 RUN apt-get -y update && \
     apt-get -y install \
       build-essential \
@@ -15,7 +17,7 @@ RUN apt-get -y update && \
       clang-tidy-14 \
       cmake \
       doxygen \
-      git \
+      git gdb\
       g++-12 \
       pkg-config \
       zlib1g-dev && \

@@ -1,5 +1,7 @@
 #include "block/allocator.h"
+
 #include "common/bitmap.h"
+#include "common/logger.h"
 
 namespace chfs {
 
@@ -54,8 +56,11 @@ BlockAllocator::BlockAllocator(std::shared_ptr<BlockManager> block_manager,
     auto block_idx = i % total_bits_per_block;
 
     if (block_id != cur_block_id) {
-      bm->write_block(cur_block_id, buffer.data());
-
+      auto res = bm->write_block(cur_block_id, buffer.data());
+      if (res.is_err()) {
+        std::cerr << "allocator failed \n";
+        return;
+      }
       cur_block_id = block_id;
       bitmap.zeroed();
     }
@@ -63,7 +68,13 @@ BlockAllocator::BlockAllocator(std::shared_ptr<BlockManager> block_manager,
     bitmap.set(block_idx);
   }
 
-  bm->write_block(cur_block_id, buffer.data());
+  // set the log_start_block_id in block manager
+  bm->set_log_id(bm->total_blocks());
+
+  auto res2 = bm->write_block(cur_block_id, buffer.data());
+  if (res2.is_err()) {
+    return;
+  }
 }
 
 // Fixme: currently we don't consider errors in this implementation
@@ -91,59 +102,77 @@ auto BlockAllocator::free_block_cnt() const -> usize {
 }
 
 // Your implementation
-auto BlockAllocator::allocate() -> ChfsResult<block_id_t> {
+auto BlockAllocator::allocate(std::vector<std::shared_ptr<BlockOperation>>* ops,
+                              block_id_t* alloc_block_id)
+    -> ChfsResult<block_id_t> {
   std::vector<u8> buffer(bm->block_size());
 
   for (uint i = 0; i < this->bitmap_block_cnt; i++) {
-    bm->read_block(i + this->bitmap_block_id, buffer.data());
+    auto curr_block_id = this->bitmap_block_id + i;
+    bm->read_block(curr_block_id, buffer.data());
 
     // The index of the allocated bit inside current bitmap block.
     std::optional<block_id_t> res = std::nullopt;
+    auto bitmap = Bitmap(buffer.data(), bm->block_size());
 
     if (i == this->bitmap_block_cnt - 1) {
-      // If current block is the last block of the bitmap.
-
-      // TODO: Find the first free bit of current bitmap block
-      // and store it in `res`.
-      UNIMPLEMENTED();
+      res = bitmap.find_first_free_w_bound(this->last_block_num);
     } else {
-
-      // TODO: Find the first free bit of current bitmap block
-      // and store it in `res`.
-      UNIMPLEMENTED();
+      res = bitmap.find_first_free();
     }
-
     // If we find one free bit inside current bitmap block.
     if (res) {
       // The block id of the allocated block.
-      block_id_t retval = static_cast<block_id_t>(0);
-
-      // TODO:
-      // 1. Set the free bit we found to 1 in the bitmap.
-      // 2. Flush the changed bitmap block back to the block manager.
-      // 3. Calculate the value of `retval`.
-      UNIMPLEMENTED();
-
-      return ChfsResult<block_id_t>(retval);
+      block_id_t retval_ = 0;
+      bitmap.set(res.value());
+      if (ops) {
+        ops->emplace_back(
+            std::make_shared<BlockOperation>(curr_block_id, buffer));
+      }
+      auto res2 = this->bm->write_block(curr_block_id, buffer.data());
+      retval_ = i * bm->block_size() * KBitsPerByte + res.value();
+      if (alloc_block_id) *alloc_block_id = retval_;
+      if (res2.is_err()) {
+        return res2.unwrap_error();
+      }
+      return {retval_};
     }
   }
-  return ChfsResult<block_id_t>(ErrorType::OUT_OF_RESOURCE);
+  return {ErrorType::OUT_OF_RESOURCE};
 }
 
 // Your implementation
-auto BlockAllocator::deallocate(block_id_t block_id) -> ChfsNullResult {
+auto BlockAllocator::deallocate(
+    block_id_t block_id, std::vector<std::shared_ptr<BlockOperation>>* ops)
+    -> ChfsNullResult {
   if (block_id >= this->bm->total_blocks()) {
     return ChfsNullResult(ErrorType::INVALID_ARG);
   }
 
-  // TODO: Implement this function.
-  // 1. According to `block_id`, zero the bit in the bitmap.
-  // 2. Flush the changed bitmap block back to the block manager.
-  // 3. Return ChfsNullResult(ErrorType::INVALID_ARG) 
-  //    if you find `block_id` is invalid (e.g. already freed).
-  UNIMPLEMENTED();
+  std::vector<u8> buffer(bm->block_size());
+  const auto num_bits_per_block = this->bm->block_size() * KBitsPerByte;
+  auto bitmap_block_id_ = this->bitmap_block_id + block_id / num_bits_per_block;
+  auto bitmap_block_offset = block_id % num_bits_per_block;
+
+  this->bm->read_block(bitmap_block_id_, buffer.data());
+  auto bitmap = Bitmap(buffer.data(), bm->block_size());
+
+  // check if it's been freed
+  auto valid = bitmap.check(bitmap_block_offset);
+  if (!valid) {
+    return ChfsNullResult(ErrorType::INVALID_ARG);
+  }
+
+  // clear the bit and flush
+  bitmap.clear(bitmap_block_offset);
+  auto res2 = bm->write_block(bitmap_block_id_, buffer.data());
+  if (ops) {
+    ops->emplace_back(
+        std::make_shared<BlockOperation>(bitmap_block_id_, buffer));
+  }
+  if (res2.is_err()) return res2.unwrap_error();
 
   return KNullOk;
 }
 
-} // namespace chfs
+}  // namespace chfs

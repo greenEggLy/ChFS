@@ -11,8 +11,9 @@
 
 #pragma once
 
-#include <optional>
 #include <string.h>
+
+#include <optional>
 
 #include "./config.h"
 #include "./macros.h"
@@ -29,7 +30,7 @@ class Bitmap {
   u8 *data;
   usize payload;
 
-public:
+ public:
   /**
    * Constructor for the bitmap
    * Note that the data pointer is not checked
@@ -134,7 +135,7 @@ public:
     // Check the words first
     for (usize i = 0; i < num_words; ++i) {
       if (words[i] !=
-          ~u64(0)) { // if word is not all ones, at least one bit is free
+          ~u64(0)) {  // if word is not all ones, at least one bit is free
         for (size_t j = 0; j < KBitsPerByte * KBytesPerWord; ++j) {
           size_t bit_index = i * KBytesPerWord * KBitsPerByte + j;
           if (!this->check(bit_index)) {
@@ -153,8 +154,8 @@ public:
       }
     }
 
-    return std::nullopt; // No free bit found
+    return std::nullopt;  // No free bit found
   }
 };
 
-} // namespace chfs
+}  // namespace chfs

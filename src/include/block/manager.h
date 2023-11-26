@@ -18,7 +18,22 @@
 #include "common/result.h"
 
 namespace chfs {
-// TODO
+
+/**
+ * `BlockOperation` is an entry indicates an old block state and
+ * a new block state. It's used to redo the operation when
+ * the system is crashed.
+ */
+class BlockOperation {
+ public:
+  explicit BlockOperation(block_id_t block_id, std::vector<u8> new_block_state)
+      : block_id_(block_id), new_block_state_(new_block_state) {
+    CHFS_ASSERT(new_block_state.size() == DiskBlockSize, "invalid block state");
+  }
+
+  block_id_t block_id_;
+  std::vector<u8> new_block_state_;
+};
 
 class BlockIterator;
 
@@ -29,18 +44,19 @@ class BlockIterator;
 class BlockManager {
   friend class BlockIterator;
 
-protected:
+ protected:
   const usize block_sz = 4096;
 
   std::string file_name_;
   int fd;
   u8 *block_data;
   usize block_cnt;
-  bool in_memory; // whether we use in-memory to emulate the block manager
+  bool in_memory;  // whether we use in-memory to emulate the block manager
   bool maybe_failed;
   usize write_fail_cnt;
+  usize log_start_id = 0;
 
-public:
+ public:
   /**
    * Creates a new block manager that writes to a file-backed block device.
    * @param block_file the file name of the  file to write to
@@ -69,7 +85,7 @@ public:
   /**
    * Creates a new block manager that writes to a file-backed block device.
    * It reserves some blocks for recording logs.
-   * 
+   *
    * @param block_file the file name of the  file to write to
    * @param block_cnt the number of blocks in the device
    * @param is_log_enabled whether to enable log
@@ -139,9 +155,19 @@ public:
   /**
    * Mark the block manager as may fail state
    */
-  auto set_may_fail(bool may_fail) -> void {
-    this->maybe_failed = may_fail;
-  }
+  auto set_may_fail(bool may_fail) -> void { this->maybe_failed = may_fail; }
+
+  /**
+   * Set the start block id for log
+   * @param log_id
+   */
+  auto set_log_id(usize log_id) -> void { this->log_start_id = log_id; }
+
+  /**
+   * Get log start id
+   * @return
+   */
+  auto get_log_id() const -> usize { return this->log_start_id; }
 };
 
 /**
@@ -158,7 +184,7 @@ class BlockIterator {
 
   std::vector<u8> buffer;
 
-public:
+ public:
   /**
    * Creates a new block iterator.
    *
@@ -200,10 +226,11 @@ public:
     return this->buffer[this->cur_block_off % bm->block_sz];
   }
 
-  template <typename T> auto unsafe_get_value_ptr() -> T * {
+  template <typename T>
+  auto unsafe_get_value_ptr() -> T * {
     return reinterpret_cast<T *>(this->buffer.data() +
                                  this->cur_block_off % bm->block_sz);
   }
 };
 
-} // namespace chfs
+}  // namespace chfs

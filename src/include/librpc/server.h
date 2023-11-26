@@ -127,7 +127,7 @@ public:
   auto names() -> std::vector<std::string> { return server->names(); }
 
   /**
-   * Gets the port 
+   * Gets the port
    */
   unsigned short port() const { return server->port(); }
 
