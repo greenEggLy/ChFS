@@ -36,7 +36,6 @@ TEST_F(RaftTestPart1, ReElection) {
   mssleep(1000);
 
   int leader2 = CheckOneLeader();
-  printf("leader2: %d", leader2);
   EXPECT_EQ(leader1 != leader2, true)
       << "node " << leader2 << " shouldn't be the new leader";
 
@@ -57,9 +56,11 @@ TEST_F(RaftTestPart1, ReElection) {
 
   /* 6. resume a node */
   EnableNode(leader1);
-  LOG_FORMAT_INFO("enable");
+  LOG_FORMAT_INFO("enable {}", leader1);
   mssleep(1000);
   CheckOneLeader();
+
+  LOG_FORMAT_INFO("done");
 }
 
 class RaftTestPart2 : public RaftTest {
@@ -518,6 +519,7 @@ TEST_F(RaftTestPart3, BasicPersist) {
   ASSERT_GE(AppendNewCommand(11, num_nodes), 0);
 
   for (int i = 0; i < num_nodes; i++) {
+    LOG_FORMAT_INFO("restart {}", i);
     Restart(i);
   }
 
@@ -568,6 +570,8 @@ TEST_F(RaftTestPart3, MorePersistence) {
 
     DisableNode((leader1 + 1) % num_nodes);
     DisableNode((leader1 + 2) % num_nodes);
+    LOG_FORMAT_INFO("disable {} and {}", (leader1 + 1) % num_nodes,
+                    (leader1 + 2) % num_nodes);
 
     ASSERT_GE(AppendNewCommand(10 + index, num_nodes - 2), 0);
     index++;
@@ -576,8 +580,14 @@ TEST_F(RaftTestPart3, MorePersistence) {
     DisableNode((leader1 + 3) % num_nodes);
     DisableNode((leader1 + 4) % num_nodes);
 
+    LOG_FORMAT_INFO("disable {}, {} and {}", (leader1 + 0) % num_nodes,
+                    (leader1 + 3) % num_nodes, (leader1 + 4) % num_nodes);
+
     Restart((leader1 + 1) % num_nodes);
     Restart((leader1 + 2) % num_nodes);
+
+    LOG_FORMAT_INFO("restart {} and {}", (leader1 + 1) % num_nodes,
+                    (leader1 + 2) % num_nodes);
 
     mssleep(1000);
 
@@ -585,10 +595,12 @@ TEST_F(RaftTestPart3, MorePersistence) {
 
     ASSERT_GE(AppendNewCommand(10 + index, num_nodes - 2), 0);
     index++;
+    LOG_FORMAT_INFO("append after restart {}", (leader1 + 3) % num_nodes);
 
     EnableNode((leader1 + 0) % num_nodes);
     EnableNode((leader1 + 4) % num_nodes);
   }
+  LOG_FORMAT_INFO("done and check");
   ASSERT_GE(AppendNewCommand(1000, num_nodes), 0);
   ASSERT_GE(WaitCommit(index, num_nodes, -1), 0);
 }
