@@ -328,7 +328,6 @@ public:
   }
 
   void Restart(int node_id) {
-    LOG_FORMAT_INFO("restarting node {}", node_id);
     DisableNode(node_id);
 
     clients[node_id].reset();

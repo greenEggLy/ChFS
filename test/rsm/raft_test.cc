@@ -472,6 +472,7 @@ public:
     ASSERT_GE(AppendNewCommand(2048, 1), 0);
     int nup = num_nodes;
     for (int iters = 0; iters < num_tries; iters++) {
+      LOG_FORMAT_INFO("iters: {}", iters);
       int leader = -1;
       for (int i = 0; i < num_nodes; i++) {
         ListCommand cmd(iters);
@@ -483,6 +484,7 @@ public:
           leader = i;
         }
       }
+      LOG_FORMAT_DEBUG("after new command");
 
       if (rand() % 1000 < 100) {
         mssleep(rand() % 500);
@@ -501,6 +503,7 @@ public:
           nup++;
         }
       }
+      LOG_FORMAT_DEBUG("disable and or restart");
     }
 
     for (int i = 0; i < num_nodes; i++) {

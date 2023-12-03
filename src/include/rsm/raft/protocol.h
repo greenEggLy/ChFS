@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rpc/msgpack.hpp"
+#include "rpc/msgpack/unpack_template.h"
 #include "rsm/raft/log.h"
 
 namespace chfs {
@@ -69,7 +70,6 @@ AppendEntriesArgs<Command> transform_rpc_append_entries_args(
 }
 
 struct AppendEntriesReply {
-  /* Lab3: Your code here */
   bool accept_;
   term_id_t term_;
 
@@ -77,18 +77,25 @@ struct AppendEntriesReply {
 };
 
 struct InstallSnapshotArgs {
-  /* Lab3: Your code here */
+  term_id_t term_id_;
+  node_id_t leader_id_;
+  int last_included_idx_;
+  term_id_t last_included_term_;
+  int offset_; /*byte offset where chunk is positioned in the snapshot file*/
+  std::vector<u8> data_;
+  bool done;
 
   MSGPACK_DEFINE(
-
+      term_id_, leader_id_, last_included_idx_, last_included_term_, offset_,
+      data_, done
       )
 };
 
 struct InstallSnapshotReply {
-  /* Lab3: Your code here */
+  term_id_t term_;
 
   MSGPACK_DEFINE(
-
+      term_
       )
 };
 } /* namespace chfs */
