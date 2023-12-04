@@ -56,16 +56,36 @@ struct RpcAppendEntriesArgs {
 template <typename Command>
 RpcAppendEntriesArgs transform_append_entries_args(
     const AppendEntriesArgs<Command>& arg) {
-  std::vector<u8> buffer(sizeof(arg));
-  *(AppendEntriesArgs<Command>*)buffer.data() = arg;
-  return RpcAppendEntriesArgs{buffer};
+  std::stringstream ss;
+  ss << arg.term_ << ' ' << arg.leader_id_ << ' ' << arg.leader_commit_ << ' '
+      << arg.prev_log_term_
+      << ' ' << arg.prev_log_idx_ << ' ' << arg.heartbeat_ << ' ' << arg.
+      last_included_idx << ' ' << static_cast<int>(arg.entries_.size());
+  for (const auto& entry : arg.entries_) {
+    ss << ' ' << entry.term_id_ << ' ' << entry.command_.
+                                                value;
+  }
+  std::string str = ss.str();
+  return RpcAppendEntriesArgs{{str.begin(), str.end()}};
 }
 
 template <typename Command>
 AppendEntriesArgs<Command> transform_rpc_append_entries_args(
     const RpcAppendEntriesArgs& rpc_arg) {
-  AppendEntriesArgs<Command> args =
-      *(AppendEntriesArgs<Command>*)(rpc_arg.data_.data());
+  AppendEntriesArgs<Command> args;
+  std::string str;
+  str.assign(rpc_arg.data_.begin(), rpc_arg.data_.end());
+  std::stringstream ss(str);
+  int size;
+  term_id_t term;
+  int cmd;
+  ss >> args.term_ >> args.leader_id_ >> args.leader_commit_ >>
+      args.prev_log_term_ >> args.prev_log_idx_ >> args.heartbeat_ >> args.
+      last_included_idx >> size;
+  for (int i = 0; i < size; ++i) {
+    ss >> term >> cmd;
+    args.entries_.emplace_back(LogEntry<Command>{term, cmd});
+  }
   return args;
 }
 

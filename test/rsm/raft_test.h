@@ -103,7 +103,9 @@ public:
         auto res2 = clients[j]->call(RAFT_RPC_CHECK_LEADER);
         std::tuple<bool, int> flag_term =
             res2.unwrap()->as<std::tuple<bool, int>>();
+
         if (std::get<0>(flag_term)) {
+          LOG_FORMAT_WARN("{} become leader in term {}", j, std::get<1>(flag_term));
           int term = std::get<1>(flag_term);
           EXPECT_GT(term, 0) << "leader term number invalid";
           EXPECT_EQ(term_leaders.find(term), term_leaders.end())
@@ -166,7 +168,6 @@ public:
       int log_value;
       if (static_cast<int>(states[i]->store.size() > log_idx)) {
         log_value = states[i]->store[log_idx];
-        LOG_FORMAT_INFO("satates[{}]->store[{}] = {}", i, log_idx, log_value);
         return log_value;
       }
     }

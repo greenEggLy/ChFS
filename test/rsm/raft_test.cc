@@ -565,6 +565,7 @@ TEST_F(RaftTestPart3, MorePersistence) {
 
   int index = 1;
   for (int iters = 0; iters < 5; iters++) {
+    LOG_FORMAT_INFO("iter: {}", iters);
     ASSERT_GE(AppendNewCommand(10 + index, num_nodes), 0);
     index++;
 
@@ -595,16 +596,19 @@ TEST_F(RaftTestPart3, MorePersistence) {
     mssleep(1000);
 
     Restart((leader1 + 3) % num_nodes);
+    LOG_FORMAT_INFO("restart {}", (leader1 + 3) % num_nodes);
 
     ASSERT_GE(AppendNewCommand(10 + index, num_nodes - 2), 0);
     index++;
-    LOG_FORMAT_INFO("append after restart {}", (leader1 + 3) % num_nodes);
 
     EnableNode((leader1 + 0) % num_nodes);
     EnableNode((leader1 + 4) % num_nodes);
+    LOG_FORMAT_INFO("enable {} and {}", (leader1 + 0) % num_nodes,
+                    (leader1 + 4) % num_nodes);
   }
   LOG_FORMAT_INFO("done and check");
   ASSERT_GE(AppendNewCommand(1000, num_nodes), 0);
+  LOG_FORMAT_INFO("done and check1");
   ASSERT_GE(WaitCommit(index, num_nodes, -1), 0);
 }
 
