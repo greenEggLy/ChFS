@@ -166,7 +166,7 @@ public:
       int log_value;
       if (static_cast<int>(states[i]->store.size() > log_idx)) {
         log_value = states[i]->store[log_idx];
-        // LOG_FORMAT_INFO("satates[{}]->store[{}] = {}", i, log_idx, log_value);
+        LOG_FORMAT_INFO("satates[{}]->store[{}] = {}", i, log_idx, log_value);
         return log_value;
       }
     }
@@ -213,7 +213,6 @@ public:
         }
       }
     }
-
     return cnt;
   }
 
@@ -257,6 +256,7 @@ public:
             /* The log is committed */
             int committed_value = GetCommittedValue(log_idx);
             if (committed_value == value) {
+              // LOG_FORMAT_DEBUG("log {} is committed, value {}", log_idx, value);
               return log_idx;
             }
           }

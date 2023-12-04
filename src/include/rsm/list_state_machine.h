@@ -74,7 +74,12 @@ public:
   //    if (index > store.size()) return false;
   //  }
 
-  size_t get_applied_size() const { return store.size(); }
+  size_t get_applied_size() {
+    std::lock_guard lockGuard(mtx);
+    return store.size();
+  }
+
+  void clear() { store.clear(); }
 
   void apply_snapshot(const std::vector<u8>& snapshot) override {
     std::unique_lock<std::mutex> lock(mtx);

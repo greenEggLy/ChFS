@@ -1,7 +1,6 @@
 #pragma once
 
 #include "rpc/msgpack.hpp"
-#include "rpc/msgpack/unpack_template.h"
 #include "rsm/raft/log.h"
 
 namespace chfs {
@@ -45,6 +44,7 @@ struct AppendEntriesArgs {
   commit_id_t prev_log_idx_;
   std::vector<LogEntry<Command>> entries_;
   bool heartbeat_;
+  int last_included_idx;
 };
 
 struct RpcAppendEntriesArgs {

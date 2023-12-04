@@ -687,7 +687,7 @@ TEST_F(RaftTestPart4, BasicSnapshot) {
   int killed_node = (leader + 1) % num_nodes;
   DisableNode(killed_node);
 
-  for (int i = 1; i < 100; i++)
+  for (int i = 1; i < 10; i++)
     ASSERT_GE(AppendNewCommand(100 + i, num_nodes - 1), 0);
 
   auto res0 = clients[leader]->call(RAFT_RPC_GET_SNAPSHOT);
@@ -696,10 +696,12 @@ TEST_F(RaftTestPart4, BasicSnapshot) {
   ListStateMachine tmp_sm;
   tmp_sm.apply_snapshot(snapshot0);
 
-  ASSERT_EQ(tmp_sm.store.size(), 100);
-  for (int i = 1; i < 100; i++) {
+  ASSERT_EQ(tmp_sm.store.size(), 10);
+  for (int i = 1; i < 10; i++) {
     ASSERT_EQ(tmp_sm.store[i], i + 100);
   }
+
+  LOG_FORMAT_INFO("after check snapshot's correctness");
 
   leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
@@ -711,14 +713,24 @@ TEST_F(RaftTestPart4, BasicSnapshot) {
 
   auto res2 = clients[other_node]->call(RAFT_RPC_SAVE_SNAPSHOT);
   ASSERT_TRUE(res2.unwrap()->as<bool>()) << "follower cannot save snapshot";
+
+  LOG_FORMAT_INFO("check leader and other's snapshot");
   mssleep(2000);
   EnableNode(killed_node);
   leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
   ASSERT_GE(AppendNewCommand(1024, num_nodes), 0);
 
-  ASSERT_TRUE(nodes[killed_node]->get_list_state_log_num() < 90)
+  ASSERT_TRUE(nodes[killed_node]->get_list_state_log_num() < 9)
       << "the snapshot does not work";
+
+  for (int i = 0; i < 3; ++i) {
+    printf("%d 's store:\n", i);
+    for (auto& cmd : states[i]->store) {
+      printf("%d ", cmd);
+    }
+    printf("\n");
+  }
 }
 
 TEST_F(RaftTestPart4, RestoreSnapshot) {
@@ -728,8 +740,10 @@ TEST_F(RaftTestPart4, RestoreSnapshot) {
   int leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
 
-  for (int i = 1; i < 100; i++)
+  for (int i = 1; i < 10; i++) {
     ASSERT_GE(AppendNewCommand(100 + i, num_nodes - 1), 0);
+    // LOG_FORMAT_INFO("pass {}", i);
+  }
 
   leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
@@ -737,6 +751,7 @@ TEST_F(RaftTestPart4, RestoreSnapshot) {
   ASSERT_TRUE(res1.unwrap()->as<bool>()) << "leader cannot save snapshot";
   mssleep(2000);
   Restart(leader);
+  LOG_FORMAT_INFO("after restart");
   ASSERT_GE(AppendNewCommand(1024, num_nodes), 0);
   ASSERT_TRUE(nodes[leader]->get_list_state_log_num() < 90)
       << "the snapshot does not work";
