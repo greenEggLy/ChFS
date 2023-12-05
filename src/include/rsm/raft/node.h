@@ -247,9 +247,6 @@ RaftNode<StateMachine, Command>::RaftNode(int node_id,
                                            ".log");
   log_storage = std::make_unique<RaftLog<Command>>(node_id, bm);
   state = std::make_unique<StateMachine>();
-  become_follower(0, INVALID_NODE_ID);
-  recover_from_disk();
-  recover_state_from_disk();
 
   rpc_server->run(true, configs.size());
 }
@@ -277,6 +274,10 @@ auto RaftNode<StateMachine, Command>::start() -> int {
         std::make_unique<RpcClient>(config.ip_address, config.port, true);
     // cnt++;
   }
+  RAFT_LOG("recovering")
+  become_follower(0, INVALID_NODE_ID);
+  recover_from_disk();
+  recover_state_from_disk();
   stopped = false;
 
   background_election =
@@ -324,7 +325,9 @@ template <typename StateMachine, typename Command>
 auto RaftNode<StateMachine, Command>::new_command(std::vector<u8> cmd_data,
                                                   int cmd_size)
   -> std::tuple<bool, int, int> {
-  /* Lab3: Your code here */
+  if (is_stopped()) {
+    return {false, 0, 0};
+  }
   std::lock_guard lockGuard(mtx);
   const auto last_included_idx = get_last_include_idx();
   if (role != RaftRole::Leader) {
@@ -369,6 +372,10 @@ auto RaftNode<StateMachine, Command>::get_snapshot() -> std::vector<u8> {
 template <typename StateMachine, typename Command>
 auto RaftNode<StateMachine, Command>::request_vote(RequestVoteArgs args)
   -> RequestVoteReply {
+  if (is_stopped()) {
+    LOG_FORMAT_WARN("hasn't begin");
+    return {false, 0};
+  }
   const auto nodeId = args.node_id_;
   if (args.term_id_ < current_term) {
     return {false, current_term};
@@ -377,17 +384,20 @@ auto RaftNode<StateMachine, Command>::request_vote(RequestVoteArgs args)
     if (args.term_id_ > current_term) {
       become_follower(args.term_id_, INVALID_NODE_ID);
       vote_for_ = nodeId;
+      RAFT_LOG("voted before, vote to %d", args.node_id_);
+
       return {true, current_term};
     }
     vote_for_ = INVALID_NODE_ID;
     return {false, current_term};
   }
   if (!is_more_up_to_data(args.last_log_term_, args.last_log_idx_)) {
-    if (vote_for_ == my_id) {
+    if (vote_for_ == my_id && role == RaftRole::Candidate) {
       vote_gain_--;
     }
     become_follower(args.term_id_, INVALID_NODE_ID);
     vote_for_ = nodeId;
+    RAFT_LOG("up to date, vote to %d", args.node_id_);
     return {true, current_term};
   }
   return {false, current_term};
@@ -405,7 +415,7 @@ void RaftNode<StateMachine, Command>::handle_request_vote_reply(
   } else if (reply.is_vote_ && role == RaftRole::Candidate) {
     current_term = std::max(current_term, reply.term_id_);
     vote_gain_++;
-    // RAFT_LOG("get vote from %d, vote gain: %d", target, vote_gain_)
+    RAFT_LOG("get vote from %d, vote gain: %d", target, vote_gain_)
     if (vote_gain_ > node_configs.size() / 2) {
       become_leader();
     }
@@ -462,6 +472,8 @@ auto RaftNode<StateMachine, Command>::append_entries(
     entry.term_id_ == args.prev_log_term_ || args.prev_log_idx_ == 0) {
     auto curr_idx = args.prev_log_idx_ + 1;
     for (auto& entry_item : args.entries_) {
+      RAFT_LOG("append %d: %d", entry_item.term_id_,
+               (int)entry_item.command_.value)
       log_storage->insert_or_rewrite(entry_item, curr_idx++);
     }
     vote_for_ = INVALID_NODE_ID;
@@ -687,6 +699,8 @@ template <typename StateMachine, typename Command>
 bool RaftNode<StateMachine, Command>::is_more_up_to_data(chfs::term_id_t termId,
   int index) {
   auto [lastLogTerm, lastLogIdx] = log_storage->get_last();
+  RAFT_LOG("my term: %d, my idx: %lu, term: %d, idx: %d", lastLogTerm,
+           lastLogIdx, termId, index)
   return lastLogTerm > termId || (lastLogTerm == termId && lastLogIdx > index);
 }
 
@@ -819,7 +833,7 @@ void RaftNode<StateMachine, Command>::run_background_apply() {
       auto last_applied = state->get_applied_size();
       const int this_applied = commit_idx;
       // RAFT_LOG("last applied: %lu, this applied: %d", last_applied,
-      // this_applied)
+      //          this_applied)
       for (int idx = last_applied - last_included_idx;
            idx <= this_applied - last_included_idx; ++idx) {
         if (idx < 0) continue;

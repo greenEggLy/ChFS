@@ -124,9 +124,10 @@ template <typename Command>
 std::pair<term_id_t, commit_id_t> RaftLog<Command>::get_last() {
   std::lock_guard lockGuard(mtx);
   if (logs_.size() <= 1) {
+    LOG_FORMAT_WARN("return last included");
     return {last_inclued_term_, last_include_idx_};
   }
-  return {logs_.back().term_id_, logs_.size() - 1};
+  return {logs_.back().term_id_, last_include_idx_ + logs_.size() - 1};
 }
 
 
@@ -194,23 +195,28 @@ void RaftLog<Command>::write_data() {
   std::stringstream ss;
   int used_bytes = 0, block_idx = 0;
   for (const auto& log : logs_) {
-    ss << ' ' << log.term_id_ << ' ' << (int)(log.command_.value);
+    ss << log.term_id_ << ' ' << (int)(log.command_.value) << ' ';
     used_bytes += per_entry_size;
     if (first) {
       first = false;
       per_entry_size = ss.str().size();
       used_bytes = per_entry_size;
     }
-    if (used_bytes + per_entry_size > bm_->block_size()) {
+    if (used_bytes + per_entry_size > bm_->block_size() ) {
       std::string str = ss.str();
       const std::vector<u8> data(str.begin(), str.end());
       log_data_bm_->write_partial_block(block_idx++, data.data(), 0,
                                         data.size());
       ss.clear();
-      ss.str("");
       used_bytes = 0;
     }
   }
+
+  std::string str = ss.str();
+  const std::vector<u8> data(str.begin(), str.end());
+  log_data_bm_->write_partial_block(block_idx++, data.data(), 0,
+                                    data.size());
+
 }
 
 template <typename Command>
@@ -220,6 +226,7 @@ std::pair<term_id_t, int> RaftLog<Command>::recover() {
   logs_.clear();
   auto [cur_term, vote_for, size] = get_meta();
   if (size == 0) {
+    LOG_FORMAT_WARN("size is zero");
     return {cur_term, vote_for};
   }
   get_data(size);
@@ -269,6 +276,7 @@ void RaftLog<Command>::get_data(const int size) {
       used_bytes = 0;
     }
     ss >> term >> value;
+    LOG_FORMAT_DEBUG("term {} value {}", term, value);
     logs_.emplace_back(LogEntry<Command>(term, Command(value)));
     used_bytes += per_entry_size;
   }
@@ -450,7 +458,7 @@ public:
   IntervalTimer() {
     start_time = std::chrono::steady_clock::now();
     gen = std::mt19937(rd());
-    dist = std::uniform_int_distribution(500, 550);
+    dist = std::uniform_int_distribution(600, 1000);
     interval_ = dist(gen);
   }
 

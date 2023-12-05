@@ -621,19 +621,25 @@ TEST_F(RaftTestPart3, Persist3) {
   int leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
   DisableNode((leader + 2) % num_nodes);
+  LOG_FORMAT_INFO("disable {}", (leader + 2) % num_nodes);
 
   ASSERT_GE(AppendNewCommand(102, num_nodes - 1), 0);
 
   DisableNode((leader + 0) % num_nodes);
   DisableNode((leader + 1) % num_nodes);
+  LOG_FORMAT_INFO("disable {} and {}", (leader + 0) % num_nodes,
+                  (leader + 1) % num_nodes);
 
   EnableNode((leader + 2) % num_nodes);
+  LOG_FORMAT_INFO("enable {}", (leader + 2) % num_nodes);
 
   Restart((leader + 0) % num_nodes);
+  LOG_FORMAT_INFO("restart {}", (leader + 0) % num_nodes);
 
   ASSERT_GE(AppendNewCommand(103, num_nodes - 1), 0);
 
   Restart((leader + 1) % num_nodes);
+  LOG_FORMAT_INFO("restart {}", (leader + 1) % num_nodes);
   ASSERT_GE(AppendNewCommand(104, num_nodes), 0);
 
   ASSERT_GE(WaitCommit(4, num_nodes, -1), 0);
