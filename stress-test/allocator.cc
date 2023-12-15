@@ -1,8 +1,9 @@
+#include "block/allocator.h"
+
 #include <gtest/gtest.h>
+
 #include <random>
 #include <unordered_set>
-
-#include "block/allocator.h"
 
 namespace chfs {
 
@@ -34,7 +35,7 @@ TEST(BlockAllocatorTest, StressTest1) {
   for (u64 i = 0; i < test_iterations; ++i) {
     if (active_blocks.empty() || dis1(gen) <= threshold) {
       // Allocate a block
-      auto block = allocator.allocate();
+      auto block = allocator.allocate(nullptr, nullptr);
       ASSERT_TRUE(block.is_ok());
 
       if (active_blocks.find(block.unwrap()) != active_blocks.end()) {
@@ -49,7 +50,7 @@ TEST(BlockAllocatorTest, StressTest1) {
       auto it = active_blocks.begin();
       std::advance(it, dis(gen) % active_blocks.size());
 
-      auto res = allocator.deallocate(*it);
+      auto res = allocator.deallocate(*it, nullptr);
       ASSERT_TRUE(res.is_ok());
       active_blocks.erase(it);
     }
@@ -62,7 +63,7 @@ TEST(BlockAllocatorTest, StressTest1) {
             << std::endl;
 }
 
-} // namespace chfs
+}  // namespace chfs
 
 int main(int argc, char **argv) {
   // Initialize Google Test

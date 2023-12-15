@@ -39,7 +39,7 @@ class InodeManager {
   u64 n_table_blocks;
   u64 n_bitmap_blocks;
 
-public:
+ public:
   /**
    * Construct an InodeManager from scratch.
    * Note that it will initialize the blocks in the block manager.
@@ -71,7 +71,9 @@ public:
    * @param type: file type
    * @param bid: inode block ID
    */
-  auto allocate_inode(InodeType type, block_id_t bid) -> ChfsResult<inode_id_t>;
+  auto allocate_inode(InodeType type, block_id_t bid,
+                      std::vector<std::shared_ptr<BlockOperation>>* ops,
+                      inode_id_t* free_inode_id) -> ChfsResult<inode_id_t>;
 
   /**
    * Get the number of free inodes
@@ -90,7 +92,9 @@ public:
   /**
    * Free the inode entry id
    */
-  auto free_inode(inode_id_t id) -> ChfsNullResult;
+  auto free_inode(inode_id_t id,
+                  std::vector<std::shared_ptr<BlockOperation>>* ops)
+      -> ChfsNullResult;
 
   /**
    * Get the attribute of the inode
@@ -118,23 +122,27 @@ public:
    * Set the block ID of the inode
    * @param idx: **physical** inode ID
    */
-  auto set_table(inode_id_t idx, block_id_t bid) -> ChfsNullResult;
+  auto set_table(inode_id_t idx, block_id_t bid,
+                 std::vector<std::shared_ptr<BlockOperation>>* ops)
+      -> ChfsNullResult;
 
-private:
+ private:
   /**
    * Simple constructors
    */
   InodeManager(std::shared_ptr<BlockManager> bm, u64 max_inode_supported,
                u64 ntables, u64 nbit)
-      : bm(bm), max_inode_supported(max_inode_supported),
-        n_table_blocks(ntables), n_bitmap_blocks(nbit) {}
+      : bm(bm),
+        max_inode_supported(max_inode_supported),
+        n_table_blocks(ntables),
+        n_bitmap_blocks(nbit) {}
 
   /**
    * Read the inode to a buffer
    * @param block_id_t: the block id that stores the inode
    */
-  auto read_inode(inode_id_t id, std::vector<u8> &buffer)
+  auto read_inode(inode_id_t id, std::vector<u8>& buffer)
       -> ChfsResult<block_id_t>;
 };
 
-} // namespace chfs
+}  // namespace chfs

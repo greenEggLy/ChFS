@@ -1,3 +1,4 @@
+#include "common/logger.h"
 #include "distributed/client.h"
 #include "distributed/dataserver.h"
 #include "distributed/metadata_server.h"
@@ -6,7 +7,7 @@
 namespace chfs {
 
 class DistributedClientTest : public ::testing::Test {
-protected:
+ protected:
   const u16 meta_port = 8080;
   const u16 data_ports[3] = {8081, 8082, 8083};
 
@@ -27,7 +28,7 @@ protected:
   // This function is called after every test.
   void TearDown() override {
     shutdown();
-    clean_data(); // We don't test persistence here since it's already tested.
+    clean_data();  // We don't test persistence here since it's already tested.
   };
 
   void init_sys() {
@@ -167,4 +168,4 @@ TEST_F(DistributedClientTest, ReCreateWhenDelete) {
   }
 }
 
-} // namespace chfs
+}  // namespace chfs

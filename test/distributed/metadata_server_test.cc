@@ -1,11 +1,13 @@
-#include "distributed/dataserver.h"
 #include "distributed/metadata_server.h"
+
+#include "common/logger.h"
+#include "distributed/dataserver.h"
 #include "gtest/gtest.h"
 
 namespace chfs {
 
 class MetadataServerTest : public ::testing::Test {
-protected:
+ protected:
   // In this test, we simulate 4 nodes: 1 metadata server and 3 data servers.
   const u16 meta_port = 8080;
   const u16 data_ports[3] = {8081, 8082, 8083};
@@ -22,6 +24,7 @@ protected:
 
   // And one client
   std::unique_ptr<RpcClient> cli;
+
   // This function is called before every test.
   void SetUp() override { init_sys(); };
 
@@ -178,7 +181,7 @@ TEST_F(MetadataServerTest, ReadWhenBlockIsInvalid) {
   auto [new_block_id, new_version] =
       alloc_res.unwrap()->as<std::pair<block_id_t, version_t>>();
   EXPECT_EQ(new_block_id, block_id);
-  EXPECT_EQ(new_version, version + 2); // one free it and one alloc it
+  EXPECT_EQ(new_version, version + 2);  // one free it and one alloc it
 
   // Now the clients want to read the data with the original block version
   auto read_res = cli->call("read_data", block_id, 0, 5, version);
@@ -190,7 +193,6 @@ TEST_F(MetadataServerTest, ReadWhenBlockIsInvalid) {
 }
 
 TEST_F(MetadataServerTest, CheckReadDir) {
-
   auto file_id1 = meta_srv->mknode(RegularFileType, 1, "fileA");
   EXPECT_EQ(file_id1, 2);
 
@@ -210,6 +212,20 @@ TEST_F(MetadataServerTest, CheckReadDir) {
   EXPECT_EQ(dir_content[1].second, 3);
   EXPECT_EQ(dir_content[2].second, 4);
 
+  clean_data();
+}
+
+TEST_F(MetadataServerTest, SimpleCheck) {
+  auto dir_id_1 = meta_srv->mknode(DirectoryType, 1, "SubDirA");
+  EXPECT_EQ(dir_id_1, 2);
+
+  for (int i = 0; i < 2; i++) {
+    std::string file_name = "file1_" + std::to_string(i);
+    auto file_id = meta_srv->mknode(RegularFileType, dir_id_1, file_name);
+    EXPECT_GT(file_id, 0);
+    auto unlink_res = meta_srv->unlink(dir_id_1, file_name);
+    EXPECT_EQ(unlink_res, true);
+  }
   clean_data();
 }
 
@@ -349,7 +365,6 @@ TEST_F(MetadataServerTest, CheckInvariant1) {
 }
 
 TEST_F(MetadataServerTest, CheckInvariant2) {
-
   auto dir_id_1 = meta_srv->mknode(DirectoryType, 1, "SubDirA");
   EXPECT_EQ(dir_id_1, 2);
   auto dir_id_2 = meta_srv->mknode(DirectoryType, 1, "SubDirB");
@@ -608,4 +623,4 @@ TEST_F(MetadataServerTest, CheckInvariant4) {
   clean_data();
 }
 
-} // namespace chfs
+}  // namespace chfs

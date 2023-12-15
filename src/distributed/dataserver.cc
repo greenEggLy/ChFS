@@ -1,4 +1,8 @@
 #include "distributed/dataserver.h"
+
+#include <memory>
+
+#include "common/logger.h"
 #include "common/util.h"
 
 namespace chfs {
@@ -12,15 +16,19 @@ auto DataServer::initialize(std::string const &data_path) {
    */
   bool is_initialized = is_file_exist(data_path);
 
-  auto bm = std::shared_ptr<BlockManager>(
-      new BlockManager(data_path, KDefaultBlockCnt));
+  auto bm = std::make_shared<BlockManager>(data_path, KDefaultBlockCnt);
+  auto version_block_sz =
+      (KDefaultBlockCnt * sizeof(version_t)) / DiskBlockSize;
+  if (version_block_sz * DiskBlockSize < KDefaultBlockCnt * sizeof(version_t)) {
+    version_block_sz++;
+  }
   if (is_initialized) {
     block_allocator_ =
-        std::make_shared<BlockAllocator>(bm, 0, false);
+        std::make_shared<BlockAllocator>(bm, version_block_sz, false);
   } else {
     // We need to reserve some blocks for storing the version of each block
-    block_allocator_ = std::shared_ptr<BlockAllocator>(
-        new BlockAllocator(bm, 0, true));
+    block_allocator_ =
+        std::make_shared<BlockAllocator>(bm, version_block_sz, true);
   }
 
   // Initialize the RPC server and bind all handlers
@@ -57,34 +65,80 @@ DataServer::~DataServer() { server_.reset(); }
 // {Your code here}
 auto DataServer::read_data(block_id_t block_id, usize offset, usize len,
                            version_t version) -> std::vector<u8> {
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
-  return {};
+  std::vector<u8> buffer(DiskBlockSize), content(len);
+  auto num_per_block = DiskBlockSize / sizeof(version_t);
+  auto version_block_id = block_id / num_per_block;
+  auto version_block_offset = block_id % num_per_block;
+  auto res1 = block_allocator_->bm->read_block(version_block_id, buffer.data());
+  if (res1.is_err()) return {};
+  auto *real_version =
+      (version_t *)(buffer.data() +
+                    version_block_offset * (sizeof(version_t) / sizeof(u8)));
+  if (*real_version != version) {
+    return {};
+  }
+  auto res = block_allocator_->bm->read_block(block_id, buffer.data());
+  if (res.is_err()) {
+    return {};
+  }
+  std::move(buffer.begin() + offset, buffer.begin() + offset + len,
+            content.begin());
+  return content;
 }
 
 // {Your code here}
 auto DataServer::write_data(block_id_t block_id, usize offset,
                             std::vector<u8> &buffer) -> bool {
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
-  return false;
+  auto res = block_allocator_->bm->write_partial_block(block_id, buffer.data(),
+                                                       offset, buffer.size());
+  if (res.is_err()) {
+    return false;
+  }
+  return true;
 }
 
 // {Your code here}
 auto DataServer::alloc_block() -> std::pair<block_id_t, version_t> {
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
-  return {};
+  auto num_per_block = DiskBlockSize / sizeof(version_t);
+  std::vector<u8> buffer(DiskBlockSize);
+  auto res = block_allocator_->allocate(nullptr, nullptr);
+  if (res.is_err()) {
+    return {};
+  }
+  auto block_id = res.unwrap();
+  auto version_block_id = block_id / num_per_block;
+  auto version_block_offset = block_id % num_per_block;
+  auto res1 = block_allocator_->bm->read_block(version_block_id, buffer.data());
+  if (res1.is_err()) return {};
+  auto *version =
+      (version_t *)(buffer.data() +
+                    version_block_offset * (sizeof(version_t) / sizeof(u8)));
+  *version += 1;
+  auto res2 =
+      block_allocator_->bm->write_block(version_block_id, buffer.data());
+  if (res2.is_err()) return {};
+  return {block_id, *version};
 }
 
 // {Your code here}
 auto DataServer::free_block(block_id_t block_id) -> bool {
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
-  return false;
+  auto num_per_block = DiskBlockSize / sizeof(version_t);
+  auto res = block_allocator_->deallocate(block_id, nullptr);
+  if (res.is_err()) {
+    return false;
+  }
+  std::vector<u8> buffer(DiskBlockSize);
+  auto version_block_id = block_id / num_per_block;
+  auto version_block_offset = block_id % num_per_block;
+  auto res1 = block_allocator_->bm->read_block(version_block_id, buffer.data());
+  if (res1.is_err()) return false;
+  auto *version =
+      (version_t *)(buffer.data() +
+                    version_block_offset * (sizeof(version_t) / sizeof(u8)));
+  *version += 1;
+  auto res2 =
+      block_allocator_->bm->write_block(version_block_id, buffer.data());
+  if (res2.is_err()) return false;
+  return true;
 }
-} // namespace chfs
+}  // namespace chfs

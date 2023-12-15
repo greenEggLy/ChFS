@@ -5,8 +5,9 @@ namespace chfs {
 
 FileOperation::FileOperation(std::shared_ptr<BlockManager> bm,
                              u64 max_inode_supported)
-    : block_manager_(bm), inode_manager_(std::shared_ptr<InodeManager>(
-                              new InodeManager(bm, max_inode_supported))),
+    : block_manager_(bm),
+      inode_manager_(std::shared_ptr<InodeManager>(
+          new InodeManager(bm, max_inode_supported))),
       block_allocator_(std::shared_ptr<BlockAllocator>(
           new BlockAllocator(bm, inode_manager_->get_reserved_blocks()))) {
   // now initialize the superblock
@@ -46,7 +47,9 @@ auto FileOperation::get_free_blocks_num() const -> ChfsResult<u64> {
   return ChfsResult<u64>(block_allocator_->free_block_cnt());
 }
 
-auto FileOperation::remove_file(inode_id_t id) -> ChfsNullResult {
+auto FileOperation::remove_file(
+    inode_id_t id, std::vector<std::shared_ptr<BlockOperation>> *ops)
+    -> ChfsNullResult {
   auto error_code = ErrorType::DONE;
   const auto block_size = this->block_manager_->block_size();
 
@@ -93,7 +96,7 @@ auto FileOperation::remove_file(inode_id_t id) -> ChfsNullResult {
 
   // First we free the inode
   {
-    auto res = this->inode_manager_->free_inode(id);
+    auto res = this->inode_manager_->free_inode(id, ops);
     if (res.is_err()) {
       error_code = res.unwrap_error();
       goto err_ret;
@@ -103,7 +106,7 @@ auto FileOperation::remove_file(inode_id_t id) -> ChfsNullResult {
 
   // now free the blocks
   for (auto bid : free_set) {
-    auto res = this->block_allocator_->deallocate(bid);
+    auto res = this->block_allocator_->deallocate(bid, ops);
     if (res.is_err()) {
       return res;
     }
@@ -113,4 +116,4 @@ err_ret:
   return ChfsNullResult(error_code);
 }
 
-} // namespace chfs
+}  // namespace chfs

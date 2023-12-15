@@ -21,4 +21,4 @@ void RpcServer::stop() { server->stop(); }
 
 void RpcServer::close_sessions() { server->close_sessions(); }
 
-} // namespace chfs
+}  // namespace chfs
