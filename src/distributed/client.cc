@@ -72,12 +72,6 @@ auto ChfsClient::get_type_attr(inode_id_t id)
   // size, atime, mtime, ctime
   auto [size, atime, mtime, ctime, type] =
       res.unwrap()->as<std::tuple<u64, u64, u64, u64, u8>>();
-  //  if (static_cast<InodeType>(type) == InodeType::FILE) {
-  //    auto res2 = metadata_server_->call("get_block_map", id);
-  //    if (res2.is_err()) return res2.unwrap_error();
-  //    size = res2.unwrap()->as<std::vector<BlockInfo>>().size() *
-  //    DiskBlockSize;
-  //  }
   ret.first = static_cast<InodeType>(type);
   ret.second.size = size;
   ret.second.atime = atime;
@@ -115,10 +109,6 @@ auto ChfsClient::read_file(inode_id_t id, usize offset, usize size)
     block_info_index++;
     block_info_offset = 0;
   }
-  // for (int i = 0; i < 30; i++) {
-  //   std::cerr << content[i];
-  // }
-  // std::cerr << std::endl;
   return {content};
 }
 

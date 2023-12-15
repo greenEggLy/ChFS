@@ -56,11 +56,8 @@ TEST_F(RaftTestPart1, ReElection) {
 
   /* 6. resume a node */
   EnableNode(leader1);
-  LOG_FORMAT_INFO("enable {}", leader1);
   mssleep(1000);
   CheckOneLeader();
-
-  LOG_FORMAT_INFO("done");
 }
 
 class RaftTestPart2 : public RaftTest {
@@ -78,7 +75,6 @@ TEST_F(RaftTestPart2, BasicAgree) {
 
     int log_idx = AppendNewCommand(i * 100, node_num);
     ASSERT_EQ(log_idx, i) << "got index " << log_idx << ", but expect " << i;
-    LOG_FORMAT_INFO("{} passed", i);
   }
 }
 
@@ -99,8 +95,6 @@ TEST_F(RaftTestPart2, FailAgreement) {
   ASSERT_GE(AppendNewCommand(105, node_num - 1), 0);
 
   EnableNode(leader);
-
-  LOG_FORMAT_INFO("enable");
 
   ASSERT_GE(AppendNewCommand(106, node_num), 0);
   ASSERT_GE(AppendNewCommand(107, node_num), 0);
@@ -301,7 +295,6 @@ TEST_F(RaftTestPart2, Backup) {
   /* put leader and one follower in a partition */
   int leader1 = CheckOneLeader();
   ASSERT_GE(leader1, 0);
-  LOG_FORMAT_INFO("currrent leader: {}", leader1);
   DisableNode((leader1 + 2) % node_num);
   DisableNode((leader1 + 3) % node_num);
   DisableNode((leader1 + 4) % node_num);
@@ -327,7 +320,6 @@ TEST_F(RaftTestPart2, Backup) {
   for (int i = 0; i < 50; i++) {
     ASSERT_GE(AppendNewCommand(value++, node_num - 2), 0);
   }
-  LOG_FORMAT_INFO("ok1");
 
   /* now another partitioned leader and one follower */
   int leader2 = CheckOneLeader();
@@ -337,7 +329,6 @@ TEST_F(RaftTestPart2, Backup) {
     other = (leader2 + 1) % node_num;
   }
 
-  LOG_FORMAT_INFO("ok2");
   DisableNode(other);
 
   /* lots more commands that won't commit */
@@ -348,7 +339,6 @@ TEST_F(RaftTestPart2, Backup) {
   }
 
   mssleep(500);
-  LOG_FORMAT_INFO("ok3");
 
   /* bring original leader back to life */
   for (int i = 0; i < node_num; i++) {
@@ -357,7 +347,6 @@ TEST_F(RaftTestPart2, Backup) {
   EnableNode(leader1 % node_num);
   EnableNode((leader1 + 1) % node_num);
   EnableNode(other);
-  LOG_FORMAT_INFO("ok4");
 
   /* lots of successful commands to new group. */
   for (int i = 0; i < 50; i++) {
@@ -472,7 +461,6 @@ public:
     ASSERT_GE(AppendNewCommand(2048, 1), 0);
     int nup = num_nodes;
     for (int iters = 0; iters < num_tries; iters++) {
-      LOG_FORMAT_INFO("iters: {}", iters);
       int leader = -1;
       for (int i = 0; i < num_nodes; i++) {
         ListCommand cmd(iters);
@@ -484,7 +472,6 @@ public:
           leader = i;
         }
       }
-      LOG_FORMAT_DEBUG("after new command");
 
       if (rand() % 1000 < 100) {
         mssleep(rand() % 500);
@@ -503,7 +490,6 @@ public:
           nup++;
         }
       }
-      LOG_FORMAT_DEBUG("disable and or restart");
     }
 
     for (int i = 0; i < num_nodes; i++) {
@@ -522,7 +508,6 @@ TEST_F(RaftTestPart3, BasicPersist) {
   ASSERT_GE(AppendNewCommand(11, num_nodes), 0);
 
   for (int i = 0; i < num_nodes; i++) {
-    LOG_FORMAT_INFO("restart {}", i);
     Restart(i);
   }
 
@@ -565,7 +550,6 @@ TEST_F(RaftTestPart3, MorePersistence) {
 
   int index = 1;
   for (int iters = 0; iters < 5; iters++) {
-    LOG_FORMAT_INFO("iter: {}", iters);
     ASSERT_GE(AppendNewCommand(10 + index, num_nodes), 0);
     index++;
 
@@ -574,8 +558,6 @@ TEST_F(RaftTestPart3, MorePersistence) {
 
     DisableNode((leader1 + 1) % num_nodes);
     DisableNode((leader1 + 2) % num_nodes);
-    LOG_FORMAT_INFO("disable {} and {}", (leader1 + 1) % num_nodes,
-                    (leader1 + 2) % num_nodes);
 
     ASSERT_GE(AppendNewCommand(10 + index, num_nodes - 2), 0);
     index++;
@@ -584,31 +566,20 @@ TEST_F(RaftTestPart3, MorePersistence) {
     DisableNode((leader1 + 3) % num_nodes);
     DisableNode((leader1 + 4) % num_nodes);
 
-    LOG_FORMAT_INFO("disable {}, {} and {}", (leader1 + 0) % num_nodes,
-                    (leader1 + 3) % num_nodes, (leader1 + 4) % num_nodes);
-
     Restart((leader1 + 1) % num_nodes);
     Restart((leader1 + 2) % num_nodes);
-
-    LOG_FORMAT_INFO("restart {} and {}", (leader1 + 1) % num_nodes,
-                    (leader1 + 2) % num_nodes);
 
     mssleep(1000);
 
     Restart((leader1 + 3) % num_nodes);
-    LOG_FORMAT_INFO("restart {}", (leader1 + 3) % num_nodes);
 
     ASSERT_GE(AppendNewCommand(10 + index, num_nodes - 2), 0);
     index++;
 
     EnableNode((leader1 + 0) % num_nodes);
     EnableNode((leader1 + 4) % num_nodes);
-    LOG_FORMAT_INFO("enable {} and {}", (leader1 + 0) % num_nodes,
-                    (leader1 + 4) % num_nodes);
   }
-  LOG_FORMAT_INFO("done and check");
   ASSERT_GE(AppendNewCommand(1000, num_nodes), 0);
-  LOG_FORMAT_INFO("done and check1");
   ASSERT_GE(WaitCommit(index, num_nodes, -1), 0);
 }
 
@@ -621,25 +592,19 @@ TEST_F(RaftTestPart3, Persist3) {
   int leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
   DisableNode((leader + 2) % num_nodes);
-  LOG_FORMAT_INFO("disable {}", (leader + 2) % num_nodes);
 
   ASSERT_GE(AppendNewCommand(102, num_nodes - 1), 0);
 
   DisableNode((leader + 0) % num_nodes);
   DisableNode((leader + 1) % num_nodes);
-  LOG_FORMAT_INFO("disable {} and {}", (leader + 0) % num_nodes,
-                  (leader + 1) % num_nodes);
 
   EnableNode((leader + 2) % num_nodes);
-  LOG_FORMAT_INFO("enable {}", (leader + 2) % num_nodes);
 
   Restart((leader + 0) % num_nodes);
-  LOG_FORMAT_INFO("restart {}", (leader + 0) % num_nodes);
 
   ASSERT_GE(AppendNewCommand(103, num_nodes - 1), 0);
 
   Restart((leader + 1) % num_nodes);
-  LOG_FORMAT_INFO("restart {}", (leader + 1) % num_nodes);
   ASSERT_GE(AppendNewCommand(104, num_nodes), 0);
 
   ASSERT_GE(WaitCommit(4, num_nodes, -1), 0);
@@ -711,8 +676,6 @@ TEST_F(RaftTestPart4, BasicSnapshot) {
     ASSERT_EQ(tmp_sm.store[i], i + 100);
   }
 
-  LOG_FORMAT_INFO("after check snapshot's correctness");
-
   leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
   int other_node = (leader + 1) % num_nodes;
@@ -724,7 +687,6 @@ TEST_F(RaftTestPart4, BasicSnapshot) {
   auto res2 = clients[other_node]->call(RAFT_RPC_SAVE_SNAPSHOT);
   ASSERT_TRUE(res2.unwrap()->as<bool>()) << "follower cannot save snapshot";
 
-  LOG_FORMAT_INFO("check leader and other's snapshot");
   mssleep(2000);
   EnableNode(killed_node);
   leader = CheckOneLeader();
@@ -752,7 +714,6 @@ TEST_F(RaftTestPart4, RestoreSnapshot) {
 
   for (int i = 1; i < 10; i++) {
     ASSERT_GE(AppendNewCommand(100 + i, num_nodes - 1), 0);
-    // LOG_FORMAT_INFO("pass {}", i);
   }
 
   leader = CheckOneLeader();
@@ -761,7 +722,6 @@ TEST_F(RaftTestPart4, RestoreSnapshot) {
   ASSERT_TRUE(res1.unwrap()->as<bool>()) << "leader cannot save snapshot";
   mssleep(2000);
   Restart(leader);
-  LOG_FORMAT_INFO("after restart");
   ASSERT_GE(AppendNewCommand(1024, num_nodes), 0);
   ASSERT_TRUE(nodes[leader]->get_list_state_log_num() < 90)
       << "the snapshot does not work";
