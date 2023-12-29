@@ -1,5 +1,3 @@
-# Lab 4: 
+# ChFS
 
-# MapReduce With Distributed File System
-
-[Document](./docs/lab4/mr.md)
+## SE3331 CSE course lab
